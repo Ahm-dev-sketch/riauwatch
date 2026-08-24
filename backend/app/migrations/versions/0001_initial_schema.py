@@ -7,6 +7,7 @@ Create Date: 2026-08-25
 
 import sqlalchemy as sa
 from alembic import op
+from geoalchemy2 import Geometry
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 # revision identifiers, used by Alembic.
@@ -45,15 +46,27 @@ def upgrade() -> None:
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("level", sa.Text(), nullable=False),
         sa.Column("parent_id", sa.Integer(), nullable=True),
-        sa.Column("geom", sa.Text(), nullable=False),  # geometry(MultiPolygon, 4326)
-        sa.Column("centroid", sa.Text(), nullable=True),  # geometry(Point, 4326)
+        sa.Column(
+            "geom",
+            Geometry(geometry_type="MULTIPOLYGON", srid=4326, spatial_index=False),
+            nullable=False,
+        ),
+        sa.Column(
+            "centroid",
+            Geometry(geometry_type="POINT", srid=4326, spatial_index=False),
+            nullable=True,
+        ),
         sa.Column("properties", JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
         sa.Column("source_id", sa.Integer(), nullable=True),
         sa.PrimaryKeyConstraint("id", name="pk_administrative_areas"),
         sa.ForeignKeyConstraint(["parent_id"], ["administrative_areas.id"], name="fk_area_parent"),
         sa.ForeignKeyConstraint(["source_id"], ["data_sources.id"], name="fk_area_source"),
         sa.CheckConstraint("level IN ('provinsi','kabupaten_kota','kecamatan')", name="ck_area_level"),
-        sa.UniqueConstraint("level", "name", "parent_id", name="uq_area"),
+    )
+    # NULLS NOT DISTINCT keeps provinsi rows (parent_id IS NULL) inside dedup scope (PG16+).
+    op.execute(
+        "ALTER TABLE administrative_areas ADD CONSTRAINT uq_area "
+        "UNIQUE NULLS NOT DISTINCT (level, name, parent_id);"
     )
     op.create_index("idx_area_geom", "administrative_areas", ["geom"], postgresql_using="gist")
     op.create_index("idx_area_parent", "administrative_areas", ["parent_id"])
@@ -66,7 +79,7 @@ def upgrade() -> None:
         sa.Column("satellite", sa.Text(), nullable=False),
         sa.Column("instrument", sa.Text(), nullable=True),
         sa.Column("acquired_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("geom", sa.Text(), nullable=False),  # geometry(Point, 4326)
+        sa.Column("geom", Geometry(geometry_type="POINT", srid=4326, spatial_index=False), nullable=False),
         sa.Column("latitude", sa.Float(), nullable=False),
         sa.Column("longitude", sa.Float(), nullable=False),
         sa.Column("confidence", sa.Text(), nullable=True),
@@ -99,7 +112,7 @@ def upgrade() -> None:
         sa.Column("source_id", sa.Integer(), nullable=False),
         sa.Column("external_id", sa.Text(), nullable=False),
         sa.Column("name", sa.Text(), nullable=True),
-        sa.Column("geom", sa.Text(), nullable=True),  # geometry(Point, 4326)
+        sa.Column("geom", Geometry(geometry_type="POINT", srid=4326, spatial_index=False), nullable=True),
         sa.Column("area_id", sa.Integer(), nullable=True),
         sa.Column("meta", JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
         sa.PrimaryKeyConstraint("id", name="pk_monitoring_stations"),
@@ -134,7 +147,7 @@ def upgrade() -> None:
         sa.Column("id", sa.BigInteger(), sa.Identity(), nullable=False),
         sa.Column("source_id", sa.Integer(), nullable=False),
         sa.Column("area_id", sa.Integer(), nullable=False),
-        sa.Column("geom", sa.Text(), nullable=True),  # geometry(Point, 4326)
+        sa.Column("geom", Geometry(geometry_type="POINT", srid=4326, spatial_index=False), nullable=True),
         sa.Column("valid_time", sa.DateTime(timezone=True), nullable=False),
         sa.Column("is_forecast", sa.Boolean(), nullable=False),
         sa.Column("temperature_c", sa.Numeric(), nullable=True),
