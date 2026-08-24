@@ -58,10 +58,12 @@ Cron table (initial):
 | firms_hotspots | every 2 h | NRT latency ~3 h; more frequent adds nothing |
 | weather_points | every 2 h | forecast cycles + recent-past refresh |
 | air_quality | every 2 h | station reporting cadence 1–6 h |
-| boundaries_refresh | weekly | static releases |
+| boundaries_refresh | quarterly | static releases (~annual upstream) |
 | risk_recompute | event-driven after above | see risk-model.md |
 
 Jitter/staggering between jobs; frequencies matched to source reality (no browser polling faster than source updates).
+
+Operational guards: overlapping runs are prevented with `pg_try_advisory_lock(job_name)` in the worker CLI (no Redis needed); "system cron" binds to VM-style hosts, so container deployments use a portable equivalent (supercronic/ofelia). MVP assumes a **single API instance** — the in-process rate limiter and memoization are per-process and must be revisited before any multi-instance deployment (documented assumption, not an accident).
 
 ### Caching — deferred Redis, cheap first
 MVP: HTTP `Cache-Control`/ETag on API responses + short-TTL server-side memoization. Redis enters only when measured need appears (concurrent load, rate-limit shaping). Architecture leaves a clean slot for it; not provisioned now (operational-cost priority).
@@ -72,33 +74,34 @@ Base path `/api/v1`. All public, no auth. Geo payloads = GeoJSON. Errors = RFC 9
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /status` | Per-domain last-observation timestamps + degraded flags (powers freshness UI) |
+| `GET /status` | Per-domain **last observation time** AND **last successful ingestion run** (distinct things — a healthy run may legitimately find no new data) + degraded flags (powers freshness UI) |
 | `GET /hotspots?bbox&date_from&date_to&kabupaten_id&min_confidence&limit&offset` | Hotspot features (capped page size, bbox max area enforced) |
 | `GET /hotspots/summary?date_from&date_to&group_by=kabupaten` | Counts for headline stats |
 | `GET /air-quality/latest?near=lat,lon\|kabupaten_id` | Nearest stations: value, category, observed_at age |
 | `GET /air-quality/history?station_id&from&to` | Time series |
 | `GET /weather/current?near=lat,lon\|kabupaten_id` | Latest observed/model conditions |
-| `GET /weather/forecast?lat&lon` | Short-range forecast |
+| `GET /weather/forecast?near=lat,lon` | Short-range forecast |
 | `GET /risk/current?kabupaten_id\|all` | Levels + explainable factors jsonb |
 | `GET /administrative-areas?level=kabupaten_kota` | Boundary GeoJSON |
+| `GET /administrative-areas/lookup?lat&lon` | Point → kabupaten/kota resolution (indexed `ST_Covers`; powers geolocation context without shipping all polygons client-side) |
 | `GET /meta/data-sources` | Source registry powering `/data-sources` transparency page |
 
 Conventions: pagination caps; `bbox` validated (≤ ~1°×1°); parameterized queries only; CORS restricted to frontend origin; per-IP rate limit (~60 req/min burst) at API layer; internal ingestion triggers are CLI/cron-only, never HTTP-exposed in MVP.
 
 ## 5. Data Ingestion Design
 
-Stages (per source adapter): **Fetch** (httpx, timeouts, ≤3 retries w/ exponential backoff + jitter) → **Validate** (pydantic schemas; invalid rows quarantined + counted, never silently dropped) → **Normalize** (units, UTC timestamptz, confidence vocabularies, EPSG:4326) → **Dedupe** (DB unique constraints + `ON CONFLICT` upserts — reruns are safe by construction) → **Transform** (admin-area assignment via `ST_Covers`, derived fields) → **Store** (batched inserts) → **Log** (mandatory `data_ingestion_logs` row: success/partial/failed, counts, error detail, params, window covered).
+Stages (per source adapter): **Fetch** (httpx, timeouts, ≤3 retries w/ exponential backoff + jitter; hotspots runs look back ≥ 48 h so downtime never creates permanent gaps; FIRMS `acq_time` parsed as integer minutes-from-midnight — zero-padding not guaranteed) → **Validate** (pydantic schemas; invalid rows written to `quarantine_rows` with the validation error + counted, never silently dropped) → **Normalize** (units, UTC timestamptz, confidence vocabularies, EPSG:4326) → **Dedupe** (DB unique constraints + explicit per-table conflict policy from `database.md` §4 — hotspots/AQ first-wins via `DO NOTHING`, weather latest-cycle-wins via `DO UPDATE`; reruns are safe by construction) → **Transform** (admin-area assignment via `ST_Covers`, derived fields) → **Store** (batched inserts) → **Log** (mandatory `data_ingestion_logs` row).
 
 Rate-limit awareness: per-source minimum-interval clients sized to documented limits (FIRMS ~5,000 tx/10 min; Open-Meteo ~10 req/s; OpenAQ free tier ~60 req/min — exact numbers re-verified live in Phase 3).
 
-Failure handling: any exception ⇒ log row with status `failed`/`partial`; `/status` flips domain to degraded after N consecutive failures; UI shows staleness messaging. No retry storms: backoff caps + cron cadence bounds attempts.
+Failure handling: the log row is inserted at run start as `'running'` and updated on completion — crashed/killed runs stay visible and count as failures after a timeout, so `/status` degradation logic can actually fire. Any exception ⇒ status `failed`/`partial` with error detail; `/status` flips a domain to degraded after N consecutive failures; UI shows staleness messaging. No retry storms: backoff caps + cron cadence bound attempts.
 
 Observability MVP: structured JSON logs + ingestion-log table + `/status`. External alerting/metrics intentionally out of MVP scope.
 
 ## 6. Testing Strategy
 
 - **Unit (pytest):** validators, normalizers, unit conversions, risk scoring incl. missing-factor renormalization and threshold boundaries.
-- **Integration (real Postgres+PostGIS via Docker):** ingestion idempotency (same fixture twice ⇒ identical row count), duplicate-prevention under unique keys, geospatial correctness (Pekanbaru centroid falls inside its kabupaten polygon), API contract tests (FastAPI TestClient).
+- **Integration (real Postgres+PostGIS via Docker):** ingestion idempotency (same fixture twice ⇒ identical row count), duplicate-prevention under unique keys, overlapping-window ingest ⇒ no duplicates, **multi-cycle weather revision** (cycle A then cycle B over same `valid_time`s ⇒ values updated, row count unchanged), **killed-run visibility** (run dies mid-fetch ⇒ `'running'` row exists ⇒ `/status` degrades after timeout), geospatial correctness (Pekanbaru centroid falls inside its kabupaten polygon), API contract tests (FastAPI TestClient), risk-formula invariant (`score == Σ(contribution)/Σ(available weights) × 100`).
 - **Fixtures:** recorded sample responses from each live source checked into `tests/fixtures/` with provenance notes; adapters tested against fixtures, live calls verified separately in Phase 3 validation tasks.
 - **Frontend:** Vitest + Testing Library for freshness/unavailable-state rendering; Playwright E2E covering the ten critical journeys (no-login load, map, hotspot layer/popup, filters, risk, AQ, geolocation, mobile layout, stale/unavailable states).
 - **Gates per phase:** ruff + mypy (backend), eslint + tsc (frontend), full test suite, production build. Security: pip-audit/npm audit + gitleaks pre-commit/CI.
@@ -108,6 +111,9 @@ Observability MVP: structured JSON logs + ingestion-log table + `/status`. Exter
 - Secrets env-only; `.env.example` documents names/structure only; gitleaks blocks commits.
 - All external data treated as untrusted input: schema-validated before storage.
 - Public API: strict query validation, pagination/bbox caps, rate limiting, CORS allowlist, secure headers, no internal error leakage.
+- Role separation: the API connects under a read-only DB role; only the worker holds write privileges (defense-in-depth against API-layer exploits).
+- Privacy note for `/administrative-areas/lookup`: server-side resolution puts precise coordinates into access logs — access-log retention capped (e.g., 14 days) and documented on the privacy/transparency page.
+- CSP must allowlist whichever basemap tile origin is chosen once the open tile decision (§9.1) resolves.
 - Privacy: browser geolocation stays client-side; precise coordinates never persisted server-side; only coarse kabupaten-level context computed from them.
 - Supply chain: pinned dependencies + lockfiles committed; automated dependency auditing.
 - No client-side secrets; frontend holds only public URLs.
@@ -116,7 +122,7 @@ Observability MVP: structured JSON logs + ingestion-log table + `/status`. Exter
 
 | Phase | Scope | Exit criteria |
 |---|---|---|
-| 3 Ingestion | Live keys registered; FIRMS + Open-Meteo + OpenAQ + boundaries adapters; logs | Live end-to-end ingest into local PostGIS; idempotency tests green; real-data shape verified against assumptions |
+| 3 Ingestion | Live keys registered; FIRMS + Open-Meteo + OpenAQ + boundaries adapters; logs; weather history backfill via `past_days` | Live end-to-end ingest into local PostGIS; idempotency + multi-cycle revision tests green; real-data shape verified against assumptions; **OpenAQ Riau station inventory verified with fallback decision recorded** (WAQI adapter built only if coverage is insufficient) |
 | 4 API | v1 endpoints + status | Contract tests pass; freshness/degraded semantics correct |
 | 5 Map | MapLibre map, hotspot layer, popups, filters, legend | E2E journeys 1–5 pass with real data |
 | 6 Air quality | AQ panels, nearest-station, history, unavailable states | Stale/unavailable messaging verified against real gaps |

@@ -38,7 +38,7 @@
 - **Integrity handling:** confidence preserved; UI states "hotspot indikasi titik panas, bukan kebakaran terkonfirmasi".
 
 ### 2. Open-Meteo (primary weather)
-- **Mechanism:** REST, no key: `api.open-meteo.com/v1/forecast` with lat/lon, hourly variables (temperature_2m, relative_humidity_2m, precipitation, wind_speed_10m, wind_direction_10m), `past_days` for recent observed-ish model data, timezone Asia/Jakarta.
+- **Mechanism:** REST, no key: `api.open-meteo.com/v1/forecast` with lat/lon, hourly variables (temperature_2m, relative_humidity_2m, precipitation, wind_speed_10m, wind_direction_10m), `past_days` for recent conditions (**model analysis**, not station observations — labeled accordingly in UI), timezone Asia/Jakarta.
 - **Terms:** free for non-commercial use with attribution ("Weather data by Open-Meteo.com"). RIAUWATCH is free/non-commercial → compliant.
 - **Usage:** point queries per kabupaten/kota centroid + user-location queries (client-side, no storage of precise coordinates).
 - **UNVERIFIED:** exact current rate-limit numbers; confirm during Phase 3 load tests.

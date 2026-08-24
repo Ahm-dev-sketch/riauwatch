@@ -11,9 +11,9 @@ Translate observed conditions into an understandable per-kabupaten/kota risk lev
 
 All inputs come from adopted sources (see `docs/data-sources.md`). Weights live in a single config file (`risk_config.yaml`-style) — recalibration requires no code change.
 
-| Factor | Input (observed) | Direction | Weight v0.1 | Source |
+| Factor | Input (recent conditions*) | Direction | Weight v0.1 | Source |
 |---|---|---|---|---|
-| Hotspot density | count of hotspots in area, last 48 h, confidence ≥ normal | more → riskier | 0.35 | FIRMS |
+| Hotspot density | hotspots per km² in area, last 48 h (VIIRS confidence filtered to n/h; MODIS mapped via confidence_value ≥ 30) | more → riskier | 0.35 | FIRMS |
 | Recent rainfall | accumulated precipitation, last 7 d | less → riskier | 0.20 | Open-Meteo past days |
 | Humidity | mean RH, last 24 h | lower → riskier | 0.15 | Open-Meteo |
 | Temperature | max temp, last 24 h | higher → riskier | 0.10 | Open-Meteo |
@@ -21,6 +21,8 @@ All inputs come from adopted sources (see `docs/data-sources.md`). Weights live 
 | Fuel/dryness indicator | — | — | reserved 0.10 | **DEFERRED** until a valid dataset (e.g., peatland map, rainfall climatology) is adopted. Never proxied by invented values. |
 
 > These weights are engineering defaults chosen for explainability, **not** scientific constants. Stated verbatim on the risk UI: "Bobot faktor bersifat konfigurasi awal dan belum tervalidasi secara ilmiah."
+>
+> \*Open-Meteo `past_days` values are **model analyses**, not station observations. UI copy says "data model cuaca" / model-based recent conditions — never "cuaca teramati". DB boundary rule: weather rows with `valid_time ≤ last complete hour` are stored as non-forecast; both classes remain model-derived.
 
 Factor normalization: each factor maps its observed value to 0–100 sub-score via piecewise-linear breakpoints defined in config (e.g., rainfall 7 d: ≥50 mm → 0; ≤5 mm → 100; linear between). Breakpoints are calibration targets, documented with initial meteorological reasoning, adjustable without redeploy.
 
@@ -30,7 +32,12 @@ Factor normalization: each factor maps its observed value to 0–100 sub-score v
 score = Σ (available_factor_subscore × weight) / Σ (available_factor_weights) × 100
 ```
 
-Missing factors are **excluded and weights renormalized** — never zero-filled, never interpolated. If fewer than 3 of 5 active factors are available, output `INSUFFICIENT_DATA` instead of a level (honest unavailability beats a misleading number).
+Missing factors are **excluded and weights renormalized** — never zero-filled, never interpolated. Two guards prevent confident-looking nonsense under partial failure:
+
+1. **Weight-coverage floor:** if Σ(available weights) < 0.55, output `INSUFFICIENT_DATA` instead of a level — otherwise a single surviving factor could render as a fully-styled HIGH/EXTREME.
+2. **Primary signal required:** if `hotspot_density` itself is unavailable, output `INSUFFICIENT_DATA` regardless of other factors — a fire-risk number without the primary observed signal is misleading by definition.
+
+(Honest unavailability beats a misleading number.)
 
 | Level | Score band |
 |---|---|
@@ -48,15 +55,15 @@ Stored in `risk_assessments.factors` (jsonb) and rendered verbatim:
 
 ```json
 {
-  "level": "HIGH",
-  "score": 61.4,
+  "level": "VERY_HIGH",
+  "score": 83.1,
   "model_version": "rules-v0.1",
   "factors": [
     {"name": "hotspot_density_48h", "value": 14, "available": true,  "subscore": 82, "contribution": 28.7,
      "reason": "14 indikasi titik panas dalam 48 jam terakhir"},
     {"name": "rainfall_7d",         "value": 3.2, "available": true,  "subscore": 94, "contribution": 18.8,
      "reason": "Curah hujan 7 hari terakhir sangat rendah (3,2 mm)"},
-    {"name": "humidity_24h",        "value": 46,  "available": true,  "subscore": 71, "contribution": 10.7,
+    {"name": "humidity_24h",        "value": 46,  "available": true,  "subscore": 71, "contribution": 10.65,
      "reason": "Kelembapan rata-rata rendah (46%)"},
     {"name": "temperature_24h_max", "value": null, "available": false, "subscore": null, "contribution": 0,
      "reason": "Data suhu tidak tersedia"}
@@ -65,11 +72,13 @@ Stored in `risk_assessments.factors` (jsonb) and rendered verbatim:
 }
 ```
 
+Worked example check: Σ(sub×w) = 58.15 over Σ(w_avail) = 0.70 ⇒ score = 83.1 ⇒ VERY_HIGH. Unit tests assert the invariant `score == Σ(factor.contribution) / Σ(available weights) × 100` so docs, code, and UI can never drift apart.
+
 UI renders Observed values and Derived assessment in visually distinct sections.
 
 ## 5. Computation Cadence
 
-Recomputed per kabupaten/kota after each relevant ingestion run (hotspots or weather) — event-driven within the worker, not per-request. Stored rows make history free and audits possible.
+Recomputed per kabupaten/kota after each relevant ingestion run (hotspots or weather) — event-driven within the worker, not per-request. `assessed_for` snaps to the top of the hour and rows upsert on `(area_id, assessed_for, horizon, model_version)`, keeping growth bounded (~10⁵ rows/yr at Riau scale). Stored rows make history free and audits possible.
 
 ## 6. Calibration Plan
 
@@ -82,4 +91,4 @@ Recomputed per kabupaten/kota after each relevant ingestion run (hotspots or wea
 
 - `risk_assessments.model_version` already namespaces outputs → ML results coexist with rules baseline.
 - Feature matrix is derivable purely from stored tables (hotspot aggregates, weather windows) → training script needs no new collection.
-- Prediction horizons (24/48/72 h) would add `horizon` column + separate model_versions when that phase is genuinely reached.
+- Prediction horizons (24/48/72 h) reuse the existing `horizon` column + separate model_versions when that phase is genuinely reached.
