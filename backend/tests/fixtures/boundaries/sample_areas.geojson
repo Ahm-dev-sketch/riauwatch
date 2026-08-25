@@ -1,0 +1,49 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "shapeName": "Pekanbaru",
+        "shapeGroup": "IDN",
+        "shapeType": "ADM2",
+        "shapeID": "IDN.14.71",
+        "ADM2_NAME": "Pekanbaru",
+        "ADM2_EN": "Pekanbaru",
+        "ADM2_PCODE": "IDN.14.71"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [101.3, 0.4],
+          [101.5, 0.4],
+          [101.5, 0.6],
+          [101.3, 0.6],
+          [101.3, 0.4]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "shapeName": "Dumai",
+        "shapeGroup": "IDN",
+        "shapeType": "ADM2",
+        "shapeID": "IDN.14.72",
+        "ADM2_NAME": "Dumai",
+        "ADM2_EN": "Dumai",
+        "ADM2_PCODE": "IDN.14.72"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [101.3, 1.5],
+          [101.5, 1.5],
+          [101.5, 1.7],
+          [101.3, 1.7],
+          [101.3, 1.5]
+        ]]
+      }
+    }
+  ]
+}
