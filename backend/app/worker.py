@@ -4,7 +4,7 @@ import argparse
 import logging
 import sys
 
-from app.ingest import run_firms_hotspots
+from app.ingest import run_boundaries_load, run_firms_hotspots, run_open_meteo, run_openaq
 from app.settings import settings
 
 # Configure structured JSON logging
@@ -26,6 +26,24 @@ def main() -> int:
         "--dry-run", action="store_true", help="Fetch and validate only, do not store"
     )
 
+    # weather-points subcommand
+    weather_parser = subparsers.add_parser("weather-points", help="Ingest Open-Meteo weather points")
+    weather_parser.add_argument(
+        "--past-days", type=int, default=None, help="Number of past days to fetch (default from settings)"
+    )
+    weather_parser.add_argument(
+        "--forecast-days", type=int, default=None, help="Number of forecast days to fetch (default from settings)"
+    )
+
+    # air-quality subcommand
+    _ = subparsers.add_parser("air-quality", help="Ingest OpenAQ air quality data")
+
+    # boundaries-load subcommand
+    boundaries_parser = subparsers.add_parser("boundaries-load", help="Load geoBoundaries administrative areas")
+    boundaries_parser.add_argument(
+        "--file", type=str, required=True, help="Path to GeoJSON file"
+    )
+
     args = parser.parse_args()
 
     if args.command == "firms-hotspots":
@@ -36,6 +54,36 @@ def main() -> int:
             return 0
         except Exception as e:
             logger.exception("FIRMS hotspots ingestion failed: %s", e)
+            return 1
+
+    elif args.command == "weather-points":
+        logger.info("Starting Open-Meteo weather ingestion")
+        try:
+            run_open_meteo(past_days=args.past_days, forecast_days=args.forecast_days)
+            logger.info("Open-Meteo weather ingestion completed")
+            return 0
+        except Exception as e:
+            logger.exception("Open-Meteo weather ingestion failed: %s", e)
+            return 1
+
+    elif args.command == "air-quality":
+        logger.info("Starting OpenAQ air quality ingestion")
+        try:
+            run_openaq()
+            logger.info("OpenAQ air quality ingestion completed")
+            return 0
+        except Exception as e:
+            logger.exception("OpenAQ air quality ingestion failed: %s", e)
+            return 1
+
+    elif args.command == "boundaries-load":
+        logger.info("Starting boundaries load from %s", args.file)
+        try:
+            run_boundaries_load(args.file)
+            logger.info("Boundaries load completed")
+            return 0
+        except Exception as e:
+            logger.exception("Boundaries load failed: %s", e)
             return 1
 
     return 0
