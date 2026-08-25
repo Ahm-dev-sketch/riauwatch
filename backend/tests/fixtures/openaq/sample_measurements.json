@@ -1,0 +1,25 @@
+{
+  "results": [
+    {
+      "parameter": "pm25",
+      "value": 25.5,
+      "unit": "µg/m³",
+      "lastUpdated": "2026-08-20T10:00:00Z",
+      "sourceName": "Pekanbaru Station"
+    },
+    {
+      "parameter": "pm10",
+      "value": 45.2,
+      "unit": "µg/m³",
+      "lastUpdated": "2026-08-20T10:00:00Z",
+      "sourceName": "Pekanbaru Station"
+    },
+    {
+      "parameter": "pm25",
+      "value": 18.3,
+      "unit": "µg/m³",
+      "lastUpdated": "2026-08-20T10:00:00Z",
+      "sourceName": "Dumai Station"
+    }
+  ]
+}

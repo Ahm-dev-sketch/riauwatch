@@ -1,0 +1,32 @@
+{
+  "results": [
+    {
+      "id": 12345,
+      "name": "Pekanbaru Station",
+      "coordinates": {
+        "latitude": 0.5071,
+        "longitude": 101.4478
+      },
+      "country": "ID",
+      "city": "Pekanbaru",
+      "isMobile": false,
+      "isAnalysis": false,
+      "entity": "government",
+      "sensorType": "reference"
+    },
+    {
+      "id": 12346,
+      "name": "Dumai Station",
+      "coordinates": {
+        "latitude": 1.6667,
+        "longitude": 101.4500
+      },
+      "country": "ID",
+      "city": "Dumai",
+      "isMobile": false,
+      "isAnalysis": false,
+      "entity": "government",
+      "sensorType": "reference"
+    }
+  ]
+}
