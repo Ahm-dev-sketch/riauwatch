@@ -29,5 +29,12 @@ class Settings(BaseSettings):
     # FIRMS bbox for Riau (west,south,east,north) — approximate, configurable
     riau_bbox: str = "99.5,-2.0,103.0,2.5"
 
+    # Open-Meteo settings
+    open_meteo_past_days: int = 7
+    open_meteo_forecast_days: int = 3
+
+    # OpenAQ settings
+    openaq_bbox: str = "99.5,-2.0,103.0,2.5"
+
 
 settings = Settings()  # type: ignore[call-arg]
