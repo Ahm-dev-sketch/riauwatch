@@ -26,5 +26,8 @@ class Settings(BaseSettings):
     # Ingestion
     ingest_lookback_hours: int = 48
 
+    # FIRMS bbox for Riau (west,south,east,north) — approximate, configurable
+    riau_bbox: str = "99.5,-2.0,103.0,2.5"
+
 
 settings = Settings()  # type: ignore[call-arg]
