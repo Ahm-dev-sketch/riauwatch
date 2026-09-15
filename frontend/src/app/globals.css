@@ -98,11 +98,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* MapLibre GL requires explicit sizing */
-.maplibregl-map {
-  width: 100%;
-  height: 100%;
-}
+/* NOTE: do NOT set .maplibregl-map { height } here — the map container carries
+ * Tailwind responsive heights (h-[400px] sm:h-[500px] lg:h-[600px]) and any
+ * unlayered height rule would override those utilities (unlayered CSS beats
+ * @layer utilities at equal specificity), collapsing or exploding the canvas.
+ * MapLibre's own CSS sizes the canvas to fill the container. */
 
 /* Custom scrollbar for the sidebar panels */
 .rw-scrollbar::-webkit-scrollbar {

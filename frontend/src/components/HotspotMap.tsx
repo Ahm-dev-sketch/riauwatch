@@ -1,5 +1,6 @@
 "use client";
 
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Map, MapLayerMouseEvent, GeoJSONSource } from "maplibre-gl";
@@ -38,6 +39,70 @@ interface HotspotMapProps {
   onHotspotClick?: (feature: HotspotsResponse["features"][0]) => void;
 }
 
+type HotspotFeature = HotspotsResponse["features"][0];
+
+function formatAcquiredAt(acquiredAt: string | null): string {
+  if (!acquiredAt) return "-";
+  return new Date(acquiredAt).toLocaleString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// Render a MapLibre popup for one hotspot feature (shared production path).
+function showPopupForFeature(
+  map: Map,
+  coords: [number, number],
+  props: Record<string, unknown>,
+  feature: HotspotFeature,
+  onHotspotClick?: (feature: HotspotFeature) => void,
+): void {
+  // Dynamically load Popup to match the maplibregl instance
+  import("maplibre-gl").then((maplibregl) => {
+    new maplibregl.Popup()
+      .setLngLat(coords)
+      .setHTML(buildHotspotPopupHtml(props, coords))
+      .addTo(map);
+  });
+
+  onHotspotClick?.(feature);
+}
+
+// Popup HTML for one hotspot feature (single source of truth for both the
+// map click handler and the mock-mode E2E hook below).
+function buildHotspotPopupHtml(
+  props: Record<string, unknown>,
+  coords: [number, number],
+): string {
+  return `
+    <div style="font-family:'DM Sans',sans-serif;min-width:220px;padding:4px">
+      <div style="font-weight:600;font-size:14px;margin-bottom:6px;color:#1a3a2a">
+        ${(props.area_name as string) || "Lokasi tidak diketahui"}
+      </div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:12px;color:#4a5568">
+        <span style="color:#718096">Latitude</span>
+        <span style="font-family:'JetBrains Mono',monospace">${coords[1].toFixed(4)}</span>
+        <span style="color:#718096">Longitude</span>
+        <span style="font-family:'JetBrains Mono',monospace">${coords[0].toFixed(4)}</span>
+        <span style="color:#718096">Waktu</span>
+        <span>${formatAcquiredAt(props.acquired_at as string | null)}</span>
+        <span style="color:#718096">Confidence</span>
+        <span>${(props.confidence as string) || "-"} ${props.confidence_value != null ? `(${props.confidence_value}%)` : ""}</span>
+        <span style="color:#718096">Satelit</span>
+        <span>${(props.satellite as string) || "-"}</span>
+        <span style="color:#718096">Sumber</span>
+        <span>${(props.instrument as string) || (props.satellite as string) || "-"}</span>
+      </div>
+      <div style="margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;font-size:11px;color:#718096;line-height:1.4">
+        <em>Indikasi titik panas, BUKAN kebakaran terkonfirmasi. Verifikasi lapangan diperlukan.</em>
+      </div>
+    </div>
+  `;
+}
+
 export function HotspotMap({ hotspots, adminAreas, showBoundaries = false, loading, onHotspotClick }: HotspotMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Map | null>(null);
@@ -69,6 +134,10 @@ export function HotspotMap({ hotspots, adminAreas, showBoundaries = false, loadi
         if (cancelled) return;
         setMapLoaded(true);
         mapRef.current = map;
+        // E2E hook (mock mode only): let Playwright project coordinates to pixels.
+        if (process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
+          (window as unknown as { __rwMap?: Map }).__rwMap = map;
+        }
       });
 
       map.on("error", (e) => {
@@ -107,6 +176,30 @@ export function HotspotMap({ hotspots, adminAreas, showBoundaries = false, loadi
       clusterMaxZoom: 14,
       clusterRadius: 50,
     });
+
+    // E2E hooks (mock mode only): expose the wired feature list and a popup
+    // trigger that runs the exact production popup code path. GL hit-testing
+    // (browser capability, not app logic) is the only step bypassed.
+    if (process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
+      const w = window as unknown as {
+        __rwHotspots?: HotspotFeature[];
+        __rwShowHotspotPopup?: (index: number) => boolean;
+      };
+      w.__rwHotspots = hotspots.features;
+      w.__rwShowHotspotPopup = (index: number) => {
+        const feature = hotspots.features[index];
+        if (!feature) return false;
+        const coords = feature.geometry.coordinates as [number, number];
+        showPopupForFeature(
+          map,
+          coords,
+          feature.properties as unknown as Record<string, unknown>,
+          feature,
+          onHotspotClick,
+        );
+        return true;
+      };
+    }
 
     // Cluster circles
     map.addLayer({
@@ -182,51 +275,13 @@ export function HotspotMap({ hotspots, adminAreas, showBoundaries = false, loadi
       const feature = e.features[0];
       const coords = (feature.geometry as { type: string; coordinates: number[] }).coordinates;
       const props = feature.properties as Record<string, unknown>;
-
-      const acquiredAt = props.acquired_at
-        ? new Date(props.acquired_at as string).toLocaleString("id-ID", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "-";
-
-      const html = `
-        <div style="font-family:'DM Sans',sans-serif;min-width:220px;padding:4px">
-          <div style="font-weight:600;font-size:14px;margin-bottom:6px;color:#1a3a2a">
-            ${props.area_name || "Lokasi tidak diketahui"}
-          </div>
-          <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:12px;color:#4a5568">
-            <span style="color:#718096">Latitude</span>
-            <span style="font-family:'JetBrains Mono',monospace">${coords[1].toFixed(4)}</span>
-            <span style="color:#718096">Longitude</span>
-            <span style="font-family:'JetBrains Mono',monospace">${coords[0].toFixed(4)}</span>
-            <span style="color:#718096">Waktu</span>
-            <span>${acquiredAt}</span>
-            <span style="color:#718096">Confidence</span>
-            <span>${props.confidence || "-"} ${props.confidence_value != null ? `(${props.confidence_value}%)` : ""}</span>
-            <span style="color:#718096">Satelit</span>
-            <span>${props.satellite || "-"}</span>
-            <span style="color:#718096">Sumber</span>
-            <span>${props.instrument || props.satellite || "-"}</span>
-          </div>
-          <div style="margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;font-size:11px;color:#718096;line-height:1.4">
-            <em>Indikasi titik panas, BUKAN kebakaran terkonfirmasi. Verifikasi lapangan diperlukan.</em>
-          </div>
-        </div>
-      `;
-
-      // Dynamically load Popup to match the maplibregl instance
-      import("maplibre-gl").then((maplibregl) => {
-        new maplibregl.Popup()
-          .setLngLat(coords as [number, number])
-          .setHTML(html)
-          .addTo(map);
-      });
-
-      onHotspotClick?.(feature as unknown as HotspotsResponse["features"][0]);
+      showPopupForFeature(
+        map,
+        [coords[0], coords[1]],
+        props,
+        feature as unknown as HotspotFeature,
+        onHotspotClick,
+      );
     };
 
     map.on("click", unclusteredLayerId, handleClick);
@@ -379,8 +434,10 @@ export function HotspotMap({ hotspots, adminAreas, showBoundaries = false, loadi
   }, [adminAreas, showBoundaries, mapLoaded, router]);
 
   return (
-    <div className="relative w-full overflow-hidden rounded-xl border border-rw-gray-200 bg-rw-gray-100 shadow-sm">
-      {loading && (
+    <div
+      className="relative w-full overflow-hidden rounded-xl border border-rw-gray-200 bg-rw-gray-100 shadow-sm"
+      data-testid="hotspot-map"
+    >      {loading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80">
           <div className="flex items-center gap-2 text-sm text-rw-gray-600">
             <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
