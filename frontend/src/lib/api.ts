@@ -7,6 +7,7 @@ import type {
   HotspotsResponse,
   HotspotsSummaryResponse,
   AirQualityLatestResponse,
+  AirQualityHistoryResponse,
   WeatherCurrentResponse,
   WeatherForecastResponse,
   RiskCurrentResponse,
@@ -68,8 +69,12 @@ function mockLookup<T>(path: string, mod: typeof import("./mocks")): T {
   if (path === "/hotspots") return mocks.mockHotspots as T;
   if (path === "/hotspots/summary") return mocks.mockHotspotsSummary as T;
   if (path.startsWith("/air-quality/latest")) return mocks.mockAirQuality as T;
+  if (path.startsWith("/air-quality/history")) return mocks.mockAirQualityHistory as T;
   if (path.startsWith("/weather/current")) return mocks.mockWeather as T;
+  if (path.startsWith("/weather/forecast")) return mocks.mockWeatherForecast as T;
   if (path.startsWith("/risk/current")) return mocks.mockRisk as T;
+  if (path.startsWith("/administrative-areas/lookup")) return mocks.mockAdminLookup as T;
+  if (path.startsWith("/administrative-areas")) return mocks.mockAdminAreas as T;
   if (path === "/meta/data-sources") return mocks.mockDataSources as T;
 
   // Fallback — return empty-ish to avoid crashes for unimplemented mocks
@@ -177,6 +182,21 @@ export async function lookupAdministrativeArea(
     lat: String(lat),
     lon: String(lon),
   });
+}
+
+export async function getAirQualityHistory(params: {
+  station_id: number;
+  pollutant: string;
+  from?: string;
+  to?: string;
+}): Promise<AirQualityHistoryResponse> {
+  const p: Record<string, string> = {
+    station_id: String(params.station_id),
+    pollutant: params.pollutant,
+  };
+  if (params.from) p.from = params.from;
+  if (params.to) p.to = params.to;
+  return fetchJson<AirQualityHistoryResponse>("/air-quality/history", p);
 }
 
 export async function getDataSources(): Promise<MetaDataSourcesResponse> {

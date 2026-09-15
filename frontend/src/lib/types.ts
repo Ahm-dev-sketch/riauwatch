@@ -156,7 +156,7 @@ export interface AdminAreaProperties {
 
 export interface AdminAreaFeature {
   type: "Feature";
-  geometry: { type: "MultiPolygon"; coordinates: number[][][][][] };
+  geometry: { type: "MultiPolygon"; coordinates: number[][][][] };
   properties: AdminAreaProperties;
 }
 
