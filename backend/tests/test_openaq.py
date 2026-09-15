@@ -198,7 +198,7 @@ class TestOpenAQSyntheticFixtures:
     def test_parse_sample_measurements(self):
         """Parse the synthetic measurements fixture."""
         fixture_path = "tests/fixtures/openaq/sample_measurements.json"
-        with open(fixture_path) as f:
+        with open(fixture_path, encoding="utf-8") as f:
             data = json.load(f)
 
         assert "results" in data
