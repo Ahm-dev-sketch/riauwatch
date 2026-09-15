@@ -23,57 +23,78 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.NODE_ENV === "production"
-    ? "https://riauwatch.id"
-    : "http://localhost:3000");
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL || "https://riauwatch.pages.dev"
+).replace(/\/+$/, "");
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "RIAUWATCH — Pemantauan Lingkungan Riau",
+    default: "RIAUWATCH — Pemantauan Karhutla, Cuaca & Kualitas Udara Riau",
     template: "%s | RIAUWATCH",
   },
   description:
-    "Platform pemantauan lingkungan independen untuk Provinsi Riau. Data titik panas, kualitas udara, cuaca, dan risiko kebakaran hutan secara real-time.",
+    "Platform pemantauan lingkungan publik independen Provinsi Riau: Titik Panas Satelit NASA FIRMS, Indeks Kualitas Udara PM2.5, Prakiraan Cuaca, dan Risiko Kebakaran Hutan Lahan real-time.",
   keywords: [
     "Riau",
-    "lingkungan",
-    "titik panas",
-    "hotspot",
-    "kualitas udara",
-    "cuaca",
-    "kebakaran hutan",
-    "pemantauan",
+    "Pekanbaru",
+    "Dumai",
+    "Karhutla",
+    "Titik Panas",
+    "Hotspot Riau",
+    "Kualitas Udara Riau",
+    "PM2.5",
+    "ISPU Riau",
+    "Cuaca Riau",
+    "Kebakaran Hutan",
+    "Gambut Riau",
+    "NASA FIRMS",
+    "Lingkungan Hidup",
     "Indonesia",
   ],
-  authors: [{ name: "RIAUWATCH" }],
+  authors: [{ name: "RIAUWATCH", url: SITE_URL }],
+  creator: "RIAUWATCH",
+  publisher: "RIAUWATCH",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     type: "website",
     locale: "id_ID",
+    url: SITE_URL,
     siteName: "RIAUWATCH",
-    title: "RIAUWATCH — Pemantauan Lingkungan Riau",
+    title: "RIAUWATCH — Pemantauan Karhutla, Cuaca & Kualitas Udara Riau",
     description:
-      "Platform pemantauan lingkungan independen untuk Provinsi Riau. Data titik panas, kualitas udara, cuaca, dan risiko kebakaran hutan.",
+      "Pantau titik panas satelit NASA, kualitas udara PM2.5, prakiraan cuaca, dan risiko kebakaran hutan lahan di 12 Kabupaten/Kota Provinsi Riau secara real-time.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "RIAUWATCH — Pemantauan Lingkungan Riau",
+        alt: "RIAUWATCH — Karhutla, Cuaca & Kualitas Udara Riau",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "RIAUWATCH — Pemantauan Lingkungan Riau",
+    title: "RIAUWATCH — Pemantauan Karhutla, Cuaca & Kualitas Udara Riau",
     description:
-      "Platform pemantauan lingkungan independen untuk Provinsi Riau.",
+      "Pantau titik panas satelit NASA, kualitas udara PM2.5, cuaca, dan risiko karhutla di Provinsi Riau.",
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
   },
 };
 
