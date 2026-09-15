@@ -27,7 +27,7 @@ DISCLAIMER = (
 _HOTSPOTS_SQL = (
     "SELECT h.id AS id, ST_AsGeoJSON(h.geom) AS geometry, h.satellite AS satellite, "
     "h.instrument AS instrument, h.confidence AS confidence, "
-    "h.confidence_value AS confidence_value, h.daynight AS daynight, "
+    "h.confidence_value AS confidence_value, h.daynight AS daynight, h.frp AS frp, "
     "h.acquired_at AS acquired_at, a.name AS area_name "
     "FROM hotspots h LEFT JOIN administrative_areas a ON a.id = h.area_id "
     "WHERE {where} ORDER BY h.acquired_at DESC LIMIT :limit OFFSET :offset"

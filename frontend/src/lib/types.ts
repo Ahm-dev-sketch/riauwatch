@@ -28,6 +28,7 @@ export interface HotspotProperties {
   confidence: string | null;
   confidence_value: number | null;
   daynight: string | null;
+  frp?: number | null;
   acquired_at: string;
   area_name: string | null;
   hotspot_indication: boolean;

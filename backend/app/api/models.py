@@ -44,6 +44,7 @@ class HotspotProperties(BaseModel):
     confidence: str | None = None
     confidence_value: float | None = None
     daynight: str | None = None
+    frp: float | None = None
     acquired_at: datetime
     area_name: str | None = None
     hotspot_indication: bool = True

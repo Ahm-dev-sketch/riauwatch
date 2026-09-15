@@ -39,9 +39,12 @@ function formatAcquiredAt(acquiredAt: string | null): string {
 }
 
 function confidenceColor(confidence: string | null): string {
-  switch (confidence) {
+  const c = (confidence || "").toLowerCase();
+  switch (c) {
+    case "h":
     case "high":
       return "bg-rw-red-100 text-rw-red-600";
+    case "n":
     case "nominal":
       return "bg-rw-haze-100 text-rw-haze-700";
     default:
@@ -50,14 +53,28 @@ function confidenceColor(confidence: string | null): string {
 }
 
 function confidenceLabel(confidence: string | null): string {
-  switch (confidence) {
+  const c = (confidence || "").toLowerCase();
+  switch (c) {
+    case "h":
     case "high":
-      return "High";
+      return "Tinggi";
+    case "n":
     case "nominal":
-      return "Nominal";
+      return "Sedang";
     default:
-      return "Low";
+      return "Rendah";
   }
+}
+
+function friendlySat(sat: string | null): string {
+  if (!sat) return "-";
+  const s = sat.toUpperCase();
+  if (s === "N20" || s.includes("NOAA-20") || s.includes("NOAA20")) return "NOAA-20";
+  if (s.includes("N21") || s.includes("NOAA-21")) return "NOAA-21";
+  if (s === "SNPP" || s.includes("S-NPP")) return "Suomi-NPP";
+  if (s.includes("TERRA")) return "Terra";
+  if (s.includes("AQUA")) return "Aqua";
+  return sat;
 }
 
 export function HotspotList({
@@ -235,7 +252,7 @@ export function HotspotList({
                         {formatAcquiredAt(props.acquired_at as string | null)}
                       </time>
                       <span aria-hidden="true">·</span>
-                      <span>{(props.satellite as string) || "-"}</span>
+                      <span>{friendlySat(props.satellite as string | null)}</span>
                     </div>
                   </div>
 

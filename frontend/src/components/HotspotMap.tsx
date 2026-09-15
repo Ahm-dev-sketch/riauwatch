@@ -103,32 +103,80 @@ function showPopupForFeature(
   onHotspotClick?.(feature);
 }
 
+function humanizeConfidence(conf: string | null, confValue: number | null): string {
+  const c = (conf || "").toLowerCase();
+  if (c === "h" || c === "high") {
+    return confValue != null ? `Tinggi / High (${confValue}%)` : "Tinggi / High (≥70%)";
+  }
+  if (c === "n" || c === "nominal") {
+    return confValue != null ? `Sedang / Nominal (${confValue}%)` : "Sedang / Nominal (30–69%)";
+  }
+  if (c === "l" || c === "low") {
+    return confValue != null ? `Rendah / Low (${confValue}%)` : "Rendah / Low (<30%)";
+  }
+  return confValue != null ? `${confValue}%` : "-";
+}
+
+function humanizeSatellite(sat: string | null): string {
+  if (!sat) return "-";
+  const s = sat.toUpperCase();
+  if (s === "N20" || s.includes("NOAA-20") || s.includes("NOAA20")) return "NOAA-20 (JPSS-1)";
+  if (s.includes("N21") || s.includes("NOAA-21") || s.includes("NOAA21")) return "NOAA-21 (JPSS-2)";
+  if (s === "SNPP" || s.includes("S-NPP") || s.includes("SUOMI")) return "Suomi NPP (NASA/NOAA)";
+  if (s.includes("TERRA")) return "Terra (NASA EOS)";
+  if (s.includes("AQUA")) return "Aqua (NASA EOS)";
+  return sat;
+}
+
+function humanizeInstrument(inst: string | null, sat: string | null): string {
+  const i = (inst || sat || "").toUpperCase();
+  if (i.includes("VIIRS")) return "Sensor VIIRS (Resolusi 375m)";
+  if (i.includes("MODIS") || i.includes("TERRA") || i.includes("AQUA")) return "Sensor MODIS (Resolusi 1 km)";
+  return inst || sat || "-";
+}
+
+function humanizeDayNight(dn: string | null): string {
+  if (!dn) return "";
+  return dn.toUpperCase() === "D" ? "Siang Hari ☀️" : "Malam Hari 🌙";
+}
+
 // Popup HTML for one hotspot feature
 function buildHotspotPopupHtml(
   props: Record<string, unknown>,
   coords: [number, number],
 ): string {
+  const confText = humanizeConfidence(
+    props.confidence as string | null,
+    props.confidence_value != null ? Number(props.confidence_value) : null,
+  );
+  const satText = humanizeSatellite(props.satellite as string | null);
+  const instText = humanizeInstrument(props.instrument as string | null, props.satellite as string | null);
+  const dnText = humanizeDayNight(props.daynight as string | null);
+  const frpVal = props.frp != null ? Number(props.frp) : null;
+
   return `
-    <div style="font-family:'DM Sans',system-ui,sans-serif;min-width:220px;padding:4px">
-      <div style="font-weight:600;font-size:14px;margin-bottom:6px;color:#2c1e18">
-        ${(props.area_name as string) || "Lokasi tidak diketahui"}
+    <div style="font-family:'DM Sans',system-ui,sans-serif;min-width:240px;padding:6px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;border-bottom:1px solid #e7e5e4;padding-bottom:6px">
+        <span style="font-weight:700;font-size:14px;color:#2c1e18">
+          ${(props.area_name as string) || "Provinsi Riau"}
+        </span>
+        ${dnText ? `<span style="font-size:11px;font-weight:600;color:#8b4513;background:#faf3eb;padding:2px 6px;border-radius:4px">${dnText}</span>` : ""}
       </div>
-      <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:12px;color:#44403c">
-        <span style="color:#57534e">Latitude</span>
-        <span style="font-family:'JetBrains Mono',monospace">${coords[1].toFixed(4)}</span>
-        <span style="color:#57534e">Longitude</span>
-        <span style="font-family:'JetBrains Mono',monospace">${coords[0].toFixed(4)}</span>
-        <span style="color:#57534e">Waktu</span>
-        <span>${formatAcquiredAt(props.acquired_at as string | null)}</span>
-        <span style="color:#57534e">Confidence</span>
-        <span>${(props.confidence as string) || "-"} ${props.confidence_value != null ? `(${props.confidence_value}%)` : ""}</span>
-        <span style="color:#57534e">Satelit</span>
-        <span>${(props.satellite as string) || "-"}</span>
-        <span style="color:#57534e">Sumber</span>
-        <span>${(props.instrument as string) || (props.satellite as string) || "-"}</span>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px;color:#44403c">
+        <span style="color:#78716c;font-weight:500">Koordinat</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:600">${coords[1].toFixed(4)}°, ${coords[0].toFixed(4)}°</span>
+        <span style="color:#78716c;font-weight:500">Waktu Deteksi</span>
+        <span style="font-weight:600">${formatAcquiredAt(props.acquired_at as string | null)}</span>
+        <span style="color:#78716c;font-weight:500">Kepercayaan</span>
+        <span style="font-weight:600;color:${(props.confidence as string) === "high" || (props.confidence as string) === "h" ? "#b91c1c" : "#b45309"}">${confText}</span>
+        <span style="color:#78716c;font-weight:500">Satelit</span>
+        <span style="font-weight:600">${satText}</span>
+        <span style="color:#78716c;font-weight:500">Sensor</span>
+        <span>${instText}</span>
+        ${frpVal != null ? `<span style="color:#78716c;font-weight:500">Daya Panas (FRP)</span><span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:#b91c1c">${frpVal.toFixed(1)} MW (Megawatt)</span>` : ""}
       </div>
-      <div style="margin-top:8px;padding-top:6px;border-top:1px solid #e7e5e4;font-size:11px;color:#57534e;line-height:1.4">
-        <em>Indikasi titik panas, BUKAN kebakaran terkonfirmasi. Verifikasi lapangan diperlukan.</em>
+      <div style="margin-top:10px;padding-top:6px;border-top:1px solid #e7e5e4;font-size:10.5px;color:#78716c;line-height:1.4">
+        <em>⚠️ Indikasi panas sensor satelit, BUKAN kebakaran terkonfirmasi. Verifikasi lapangan diperlukan.</em>
       </div>
     </div>
   `;
