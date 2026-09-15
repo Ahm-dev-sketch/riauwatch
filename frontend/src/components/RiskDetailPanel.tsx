@@ -10,7 +10,24 @@ import { MockBadge } from "./MockBadge";
 // ---------------------------------------------------------------------------
 
 function getRiskVisual(level: string | null) {
-  switch (level) {
+  const norm = (level || "").toUpperCase();
+  switch (norm) {
+    case "EXTREME":
+    case "VERY_HIGH":
+    case "VERY HIGH":
+      return {
+        label: "Risiko Sangat Tinggi",
+        color: "text-purple-700",
+        bgColor: "bg-purple-100",
+        borderColor: "border-purple-300",
+        icon: (
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        ),
+      };
     case "HIGH":
       return {
         label: "Risiko Tinggi",
@@ -25,6 +42,7 @@ function getRiskVisual(level: string | null) {
           </svg>
         ),
       };
+    case "MODERATE":
     case "MEDIUM":
       return {
         label: "Risiko Sedang",
@@ -54,7 +72,7 @@ function getRiskVisual(level: string | null) {
       };
     default:
       return {
-        label: "Belum Dihitung",
+        label: "Data Belum Cukup",
         color: "text-rw-gray-600",
         bgColor: "bg-rw-gray-100",
         borderColor: "border-rw-gray-200",
@@ -66,6 +84,12 @@ function getRiskVisual(level: string | null) {
         ),
       };
   }
+}
+
+function normalizeScore(score: number | null): number | null {
+  if (score === null || score === undefined) return null;
+  const val = score > 1.0 ? score : score * 100;
+  return Math.min(100, Math.max(0, Math.round(val)));
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +107,9 @@ const FACTOR_NAME_MAP: Record<string, string> = {
   humidity_avg_pct: "Kelembapan Udara Rata-rata",
   temperature_24h_max: "Suhu Udara Tertinggi",
   wind_speed_24h: "Kecepatan Angin",
+  wind_24h_mean: "Kecepatan Angin",
   wind_speed_avg_kmh: "Kecepatan Angin",
+  fuel_index: "Kondisi Bahan Bakar/Gambut",
 };
 
 const FACTOR_VALUE_MAP: Record<string, string> = {
@@ -103,11 +129,18 @@ function humanizeName(rawKey: string): string {
 }
 
 function humanizeValue(rawKey: string, rawVal: string | number): string {
+  if (rawVal === null || rawVal === undefined || rawVal === "-" || rawVal === "") {
+    return "Tidak tersedia";
+  }
+
   const str = String(rawVal).toLowerCase();
   if (FACTOR_VALUE_MAP[str]) return FACTOR_VALUE_MAP[str];
 
-  if (rawKey === "hotspot_count_7d" || rawKey === "hotspot_density_48h") {
+  if (rawKey === "hotspot_count_7d") {
     return `${rawVal} titik terdeteksi`;
+  }
+  if (rawKey === "hotspot_density_48h") {
+    return `${rawVal} titik / 1.000 km²`;
   }
   if (rawKey === "dry_spell_days") {
     return `${rawVal} hari berturut-turut`;
@@ -118,7 +151,7 @@ function humanizeValue(rawKey: string, rawVal: string | number): string {
   if (rawKey.includes("humidity")) {
     return `${rawVal}%`;
   }
-  if (rawKey.includes("temp")) {
+  if (rawKey.includes("temp") || rawKey.includes("temperature")) {
     return `${rawVal}°C`;
   }
   if (rawKey.includes("wind")) {
@@ -143,18 +176,34 @@ interface RiskFactor {
 }
 
 function parseFactors(factors: Record<string, unknown>): RiskFactor[] {
+  if (!factors) return [];
+  // 1. If factors contains an inner "factors" array (from rules engine)
+  if (Array.isArray((factors as { factors?: unknown[] }).factors)) {
+    return (factors as { factors: Record<string, unknown>[] }).factors
+      .filter((f) => f && typeof f === "object")
+      .map((f) => ({
+        name: String(f.name ?? ""),
+        value: f.value != null ? (f.value as string | number) : "-",
+        reason: String(f.reason ?? ""),
+      }));
+  }
+  // 2. If factors is directly an array
   if (Array.isArray(factors)) {
     return factors.map((f) => ({
       name: String((f as Record<string, unknown>).name ?? ""),
-      value: (f as Record<string, unknown>).value as string | number,
+      value: (f as Record<string, unknown>).value != null ? ((f as Record<string, unknown>).value as string | number) : "-",
       reason: String((f as Record<string, unknown>).reason ?? ""),
     }));
   }
-  return Object.entries(factors).map(([key, val]) => ({
-    name: key,
-    value: val as string | number,
-    reason: typeof val === "string" ? val : String(val),
-  }));
+  // 3. Fallback for flat dictionary
+  const skipKeys = new Set(["level", "score", "model_version", "observed_window", "insufficient", "note"]);
+  return Object.entries(factors)
+    .filter(([k, v]) => !skipKeys.has(k) && typeof v !== "object")
+    .map(([key, val]) => ({
+      name: key,
+      value: val as string | number,
+      reason: typeof val === "string" ? val : String(val),
+    }));
 }
 
 function RiskFactors({ factors }: { factors: Record<string, unknown> }) {
@@ -206,23 +255,22 @@ function RiskFactors({ factors }: { factors: Record<string, unknown> }) {
 
 function RiskCard({ assessment }: { assessment: RiskAssessment }) {
   const visual = getRiskVisual(assessment.risk_level);
+  const displayScore = normalizeScore(assessment.score);
 
   return (
     <div
-      className={`rw-instrument-panel rounded-xl border ${
-        assessment.risk_level === "HIGH"
-          ? "border-rw-red-200"
-          : assessment.risk_level === "MEDIUM"
-            ? "border-rw-orange-200"
-            : "border-rw-smoke-200"
-      } bg-white p-5 shadow-sm`}
+      className={`rw-instrument-panel rounded-xl border ${visual.borderColor} bg-white p-5 shadow-sm`}
       style={{
         borderLeftColor:
-          assessment.risk_level === "HIGH"
+          visual.color.includes("red")
             ? "var(--rw-red-600)"
-            : assessment.risk_level === "MEDIUM"
-              ? "var(--rw-orange-600)"
-              : "var(--rw-mangrove-600)",
+            : visual.color.includes("purple")
+              ? "#7e22ce"
+              : visual.color.includes("orange")
+                ? "var(--rw-orange-600)"
+                : visual.color.includes("green")
+                  ? "var(--rw-mangrove-600)"
+                  : "var(--rw-smoke-400)",
       }}
     >
       {/* Header */}
@@ -247,29 +295,31 @@ function RiskCard({ assessment }: { assessment: RiskAssessment }) {
       </div>
 
       {/* Score bar */}
-      {assessment.score != null && (
+      {displayScore != null && (
         <div className="mt-4">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium text-rw-smoke-600">Tingkat Potensi Kebakaran</span>
             <span className="rw-readout text-xs font-bold text-rw-peat-900">
-              {Math.round(assessment.score * 100)}%
+              {displayScore}%
             </span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-rw-smoke-100">
             <div
               className={`h-full rounded-full transition-all ${
-                assessment.risk_level === "HIGH"
+                visual.color.includes("red")
                   ? "bg-rw-red-600"
-                  : assessment.risk_level === "MEDIUM"
-                    ? "bg-rw-orange-600"
-                    : "bg-rw-mangrove-600"
+                  : visual.color.includes("purple")
+                    ? "bg-purple-600"
+                    : visual.color.includes("orange")
+                      ? "bg-rw-orange-600"
+                      : "bg-rw-mangrove-600"
               }`}
-              style={{ width: `${Math.round(assessment.score * 100)}%` }}
+              style={{ width: `${displayScore}%` }}
               role="progressbar"
-              aria-valuenow={Math.round(assessment.score * 100)}
+              aria-valuenow={displayScore}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`Tingkat potensi kebakaran: ${Math.round(assessment.score * 100)}%`}
+              aria-label={`Tingkat potensi kebakaran: ${displayScore}%`}
             />
           </div>
         </div>

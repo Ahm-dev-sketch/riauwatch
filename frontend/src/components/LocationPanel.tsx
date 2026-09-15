@@ -240,19 +240,40 @@ export function LocationPanel() {
           {risk && risk.assessments.length > 0 && (
             <div className="rounded-xl border border-rw-gray-200 bg-white p-4 shadow-sm">
               <h3 className="text-sm font-semibold text-rw-gray-900 mb-2">Risiko Kebakaran</h3>
-              {risk.assessments.filter((a) => a.area_name === area.name).slice(0, 1).map((a) => (
-                <div key={a.area_id} className="flex items-center gap-2">
-                  <span className={`text-sm font-medium ${
-                    a.risk_level === "HIGH" ? "text-rw-red-600" : a.risk_level === "MEDIUM" ? "text-rw-orange-600" : "text-rw-mangrove-700"
-                  }`}>
-                    {a.risk_level === "HIGH" ? "Risiko Tinggi" : a.risk_level === "MEDIUM" ? "Risiko Sedang" : "Risiko Rendah"}
-                  </span>
-                  {a.score != null && (
-                    <span className="text-xs font-mono text-rw-gray-600">{Math.round(a.score * 100)}%</span>
-                  )}
-                </div>
-              ))}
-              {risk.assessments.filter((a) => a.area_name === area.name).length === 0 && (
+              {risk.assessments.filter((a) => a.area_name.toLowerCase().includes(area.name.toLowerCase()) || area.name.toLowerCase().includes(a.area_name.toLowerCase())).slice(0, 1).map((a) => {
+                const norm = (a.risk_level || "").toUpperCase();
+                const scoreVal = a.score != null ? (a.score > 1 ? a.score : a.score * 100) : null;
+                const label =
+                  norm === "VERY_HIGH" || norm === "EXTREME"
+                    ? "Risiko Sangat Tinggi"
+                    : norm === "HIGH"
+                      ? "Risiko Tinggi"
+                      : norm === "MODERATE" || norm === "MEDIUM"
+                        ? "Risiko Sedang"
+                        : norm === "LOW"
+                          ? "Risiko Rendah"
+                          : "Data Belum Cukup";
+                const color =
+                  norm === "HIGH" || norm === "EXTREME"
+                    ? "text-rw-red-600"
+                    : norm === "MODERATE" || norm === "MEDIUM"
+                      ? "text-rw-orange-600"
+                      : norm === "LOW"
+                        ? "text-rw-mangrove-700"
+                        : "text-rw-smoke-600";
+
+                return (
+                  <div key={a.area_id} className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold ${color}`}>
+                      {label}
+                    </span>
+                    {scoreVal != null && (
+                      <span className="text-xs font-mono text-rw-gray-600">({Math.round(scoreVal)}%)</span>
+                    )}
+                  </div>
+                );
+              })}
+              {risk.assessments.filter((a) => a.area_name.toLowerCase().includes(area.name.toLowerCase()) || area.name.toLowerCase().includes(a.area_name.toLowerCase())).length === 0 && (
                 <p className="text-xs text-rw-gray-500 italic">Risiko belum dihitung untuk {area.name}</p>
               )}
             </div>

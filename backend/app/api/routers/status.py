@@ -33,7 +33,7 @@ DOMAIN_OBSERVATION_SQL = {
     ),
     "weather": (
         "SELECT MAX(w.valid_time) AS last_obs FROM weather_observations w "
-        "WHERE w.source_id IN (SELECT s.id FROM data_sources s WHERE s.key LIKE :pat)"
+        "WHERE w.is_forecast = false AND w.source_id IN (SELECT s.id FROM data_sources s WHERE s.key LIKE :pat)"
     ),
 }
 

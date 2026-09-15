@@ -66,7 +66,9 @@ function getDomainHealth(status: DomainStatus | null): {
 function formatAge(isoDate: string | null): string {
   if (!isoDate) return "Tidak tersedia";
   const diff = Date.now() - new Date(isoDate).getTime();
+  if (diff < 0) return "Terkini";
   const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "Baru saja";
   if (mins < 60) return `${mins} menit lalu`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours} jam lalu`;

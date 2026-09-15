@@ -9,7 +9,24 @@ interface RiskBadgeProps {
 }
 
 function getRiskVisual(level: string | null) {
-  switch (level) {
+  const norm = (level || "").toUpperCase();
+  switch (norm) {
+    case "EXTREME":
+    case "VERY_HIGH":
+    case "VERY HIGH":
+      return {
+        label: "Risiko Sangat Tinggi",
+        color: "text-purple-700",
+        bgColor: "bg-purple-100",
+        borderColor: "#7e22ce",
+        icon: (
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        ),
+      };
     case "HIGH":
       return {
         label: "Risiko Tinggi",
@@ -24,6 +41,7 @@ function getRiskVisual(level: string | null) {
           </svg>
         ),
       };
+    case "MODERATE":
     case "MEDIUM":
       return {
         label: "Risiko Sedang",
@@ -53,7 +71,7 @@ function getRiskVisual(level: string | null) {
       };
     default:
       return {
-        label: "Belum Dihitung",
+        label: "Data Belum Cukup",
         color: "text-rw-smoke-600",
         bgColor: "bg-rw-smoke-100",
         borderColor: "var(--rw-smoke-400)",
@@ -65,6 +83,12 @@ function getRiskVisual(level: string | null) {
         ),
       };
   }
+}
+
+function normalizeScore(score: number | null): number | null {
+  if (score === null || score === undefined) return null;
+  const val = score > 1.0 ? score : score * 100;
+  return Math.min(100, Math.max(0, Math.round(val)));
 }
 
 export function RiskBadge({ assessment, compact = false }: RiskBadgeProps) {
@@ -106,21 +130,23 @@ export function RiskBadge({ assessment, compact = false }: RiskBadgeProps) {
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-rw-smoke-100">
             <div
               className={`h-full rounded-full transition-all ${
-                assessment.risk_level === "HIGH"
+                visual.color.includes("red")
                   ? "bg-rw-red-600"
-                  : assessment.risk_level === "MEDIUM"
-                    ? "bg-rw-orange-600"
-                    : "bg-rw-mangrove-600"
+                  : visual.color.includes("purple")
+                    ? "bg-purple-600"
+                    : visual.color.includes("orange")
+                      ? "bg-rw-orange-600"
+                      : "bg-rw-mangrove-600"
               }`}
-              style={{ width: `${Math.round(assessment.score * 100)}%` }}
+              style={{ width: `${normalizeScore(assessment.score)}%` }}
               role="progressbar"
-              aria-valuenow={Math.round(assessment.score * 100)}
+              aria-valuenow={normalizeScore(assessment.score)!}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`Skor risiko: ${Math.round(assessment.score * 100)}%`}
+              aria-label={`Skor risiko: ${normalizeScore(assessment.score)}%`}
             />
           </div>
-          <span className="rw-readout text-xs font-medium text-rw-smoke-700">{Math.round(assessment.score * 100)}%</span>
+          <span className="rw-readout text-xs font-medium text-rw-smoke-700">{normalizeScore(assessment.score)}%</span>
         </div>
       )}
     </div>

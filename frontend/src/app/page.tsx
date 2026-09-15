@@ -340,6 +340,7 @@ export default function HomePage() {
                     ref={mapRef}
                     hotspots={hotspots}
                     adminAreas={adminAreas}
+                    selectedKabupatenId={filters.kabupatenId}
                     showBoundaries={layers.boundaries}
                     loading={loading}
                     onHotspotClick={handleMapClick}

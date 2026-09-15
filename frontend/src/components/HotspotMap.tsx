@@ -63,6 +63,7 @@ export interface HotspotMapHandle {
 interface HotspotMapProps {
   hotspots: HotspotsResponse | null;
   adminAreas?: AdminAreasResponse | null;
+  selectedKabupatenId?: string | number | null;
   showBoundaries?: boolean;
   loading?: boolean;
   onHotspotClick?: (feature: HotspotsResponse["features"][0]) => void;
@@ -135,7 +136,15 @@ function buildHotspotPopupHtml(
 
 export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
   function HotspotMap(
-    { hotspots, adminAreas, showBoundaries = false, loading, onHotspotClick, onTileStatusChange },
+    {
+      hotspots,
+      adminAreas,
+      selectedKabupatenId,
+      showBoundaries = false,
+      loading,
+      onHotspotClick,
+      onTileStatusChange,
+    },
     ref,
   ) {
     const mapContainer = useRef<HTMLDivElement>(null);
@@ -252,6 +261,79 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         mapRef.current = null;
       };
     }, [reportTileStatus]);
+
+    // Auto-focus and zoom map when Kabupaten/Kota is selected in filter
+    useEffect(() => {
+      const map = mapRef.current;
+      if (!map || !mapLoaded) return;
+
+      if (!selectedKabupatenId) {
+        // Reset to full Riau view
+        map.flyTo({
+          center: RIAU_CENTER,
+          zoom: RIAU_ZOOM,
+          duration: 900,
+        });
+        return;
+      }
+
+      const idNum = Number(selectedKabupatenId);
+      // Find area in adminAreas
+      const areaFeature = adminAreas?.features.find(
+        (f) => f.properties.id === idNum
+      );
+
+      if (areaFeature) {
+        try {
+          const coords = areaFeature.geometry.coordinates;
+          const flatCoords: number[][] = [];
+          if (areaFeature.geometry.type === "MultiPolygon") {
+            for (const poly of coords) {
+              for (const ring of poly) {
+                flatCoords.push(...ring);
+              }
+            }
+          } else if ((areaFeature.geometry.type as string) === "Polygon") {
+            const polyCoords = coords as unknown as number[][][];
+            for (const ring of polyCoords) {
+              flatCoords.push(...ring);
+            }
+          }
+
+          if (flatCoords.length > 0) {
+            const lons = flatCoords.map((c) => c[0]);
+            const lats = flatCoords.map((c) => c[1]);
+            const minLon = Math.min(...lons);
+            const maxLon = Math.max(...lons);
+            const minLat = Math.min(...lats);
+            const maxLat = Math.max(...lats);
+            const centerLon = (minLon + maxLon) / 2;
+            const centerLat = (minLat + maxLat) / 2;
+
+            map.flyTo({
+              center: [centerLon, centerLat],
+              zoom: Math.max(map.getZoom(), 8.8),
+              duration: 900,
+            });
+            return;
+          }
+        } catch {
+          // Fall through
+        }
+      }
+
+      // Fallback: if hotspots exist for this area, center on the first hotspot
+      const areaHotspots = hotspots?.features.filter(
+        (f) => (f.properties as unknown as Record<string, unknown>).kabupaten_id === idNum
+      );
+      if (areaHotspots && areaHotspots.length > 0) {
+        map.flyTo({
+          center: areaHotspots[0].geometry.coordinates as [number, number],
+          zoom: 9.0,
+          duration: 900,
+        });
+      }
+    }, [selectedKabupatenId, adminAreas, hotspots, mapLoaded]);
 
     // Add/update hotspot source and layers
     useEffect(() => {
