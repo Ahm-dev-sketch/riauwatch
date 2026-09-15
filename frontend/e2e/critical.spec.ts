@@ -226,8 +226,8 @@ test("journey 10: keyboard-accessible hotspot list", async ({ page }) => {
 
 // (11) Tile-failure fallback: when tiles fail, notice appears + list keeps working.
 test("journey 11: tile failure shows fallback notice with retry", async ({ page }) => {
-  // Override the tile route to return 500 errors instead of the empty style
-  await page.route("https://tiles.openfreemap.org/**", async (route) => {
+  // Override the tile route to return errors
+  await page.route(/tiles\.openfreemap\.org|basemaps\.cartocdn\.com|tile\.openstreetmap\.org/, async (route) => {
     await route.abort("failed");
   });
 

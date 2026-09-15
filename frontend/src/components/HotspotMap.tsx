@@ -10,15 +10,13 @@ import type { HotspotsResponse, AdminAreasResponse } from "@/lib/types";
 const RIAU_CENTER: [number, number] = [101.5, 0.5];
 const RIAU_ZOOM = 7;
 
-// OpenFreeMap vector tiles (primary)
-const PRIMARY_TILE_STYLE = "https://tiles.openfreemap.org/styles/positron";
-
-// Global CARTO & OSM raster tiles fallback (works 100% across all ISPs, adblockers, and offline proxies)
-const FALLBACK_RASTER_STYLE = {
-  version: 8 as const,
+// High-reliability self-contained raster basemap (CARTO Positron + OpenStreetMap).
+// Free, fast, no API key required, zero external style.json dependency.
+const DEFAULT_MAP_STYLE: StyleSpecification = {
+  version: 8,
   sources: {
     "osm-carto-raster": {
-      type: "raster" as const,
+      type: "raster",
       tiles: [
         "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
         "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
@@ -32,7 +30,7 @@ const FALLBACK_RASTER_STYLE = {
   layers: [
     {
       id: "osm-carto-raster-layer",
-      type: "raster" as const,
+      type: "raster",
       source: "osm-carto-raster",
       minzoom: 0,
       maxzoom: 19,
@@ -105,8 +103,7 @@ function showPopupForFeature(
   onHotspotClick?.(feature);
 }
 
-// Popup HTML for one hotspot feature (single source of truth for both the
-// map click handler and the mock-mode E2E hook below).
+// Popup HTML for one hotspot feature
 function buildHotspotPopupHtml(
   props: Record<string, unknown>,
   coords: [number, number],
@@ -181,9 +178,9 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         reportTileStatus(false);
         tileErrorCountRef.current = 0;
         try {
-          map.setStyle(PRIMARY_TILE_STYLE);
-        } catch {
-          map.setStyle(FALLBACK_RASTER_STYLE as unknown as StyleSpecification);
+          map.setStyle(DEFAULT_MAP_STYLE);
+        } catch (err) {
+          console.error("Error setting map style:", err);
         }
       },
     }), [onHotspotClick, reportTileStatus]);
@@ -198,11 +195,9 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
       import("maplibre-gl").then((maplibregl) => {
         if (cancelled || !mapContainer.current) return;
 
-        let hasFallenBack = false;
-
         const map = new maplibregl.Map({
           container: mapContainer.current,
-          style: PRIMARY_TILE_STYLE,
+          style: DEFAULT_MAP_STYLE,
           center: RIAU_CENTER,
           zoom: RIAU_ZOOM,
           minZoom: 4,
@@ -212,7 +207,7 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         map.addControl(new maplibregl.NavigationControl(), "top-right");
         map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
 
-        // ResizeObserver to ensure MapLibre adjusts whenever container sizes or flex settles
+        // ResizeObserver to ensure MapLibre adjusts whenever container sizes or layout settles
         if (typeof ResizeObserver !== "undefined" && mapContainer.current) {
           resizeObserver = new ResizeObserver(() => {
             map.resize();
@@ -220,27 +215,17 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
           resizeObserver.observe(mapContainer.current);
         }
 
-        // Track tile errors and fallback to reliable CARTO/OSM raster tiles if vector style fails
         map.on("error", (e) => {
           const err = e.error as { status?: number; message?: string } | undefined;
           const isTileError =
             (err?.status != null && err.status >= 400) ||
             (err?.message?.toLowerCase().includes("tile") ?? false) ||
-            (err?.message?.toLowerCase().includes("style") ?? false) ||
             (err?.message?.toLowerCase().includes("failed") ?? false);
 
           if (isTileError) {
             tileErrorCountRef.current += 1;
-            reportTileStatus(true);
-
-            if (!hasFallenBack) {
-              hasFallenBack = true;
-              console.warn("Primary vector tiles unavailable; falling back to OSM/CARTO raster basemap.");
-              try {
-                map.setStyle(FALLBACK_RASTER_STYLE as unknown as StyleSpecification);
-              } catch (fallbackErr) {
-                console.error("Fallback style error:", fallbackErr);
-              }
+            if (tileErrorCountRef.current >= 3) {
+              reportTileStatus(true);
             }
           }
         });
@@ -250,6 +235,7 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
           setMapLoaded(true);
           mapRef.current = map;
           map.resize();
+          reportTileStatus(false);
           tileErrorCountRef.current = 0;
           // E2E hook (mock mode only): let Playwright project coordinates to pixels.
           if (process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
@@ -294,8 +280,6 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
       });
 
       // E2E hooks (mock mode only): expose the wired feature list and a popup
-      // trigger that runs the exact production popup code path. GL hit-testing
-      // (browser capability, not app logic) is the only step bypassed.
       if (process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
         const w = window as unknown as {
           __rwHotspots?: HotspotFeature[];
@@ -355,7 +339,6 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         filter: ["has", "point_count"],
         layout: {
           "text-field": "{point_count_abbreviated}",
-          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
           "text-size": 12,
         },
         paint: {
@@ -374,10 +357,10 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
             "match",
             ["get", "confidence"],
             "high",
-            "#b91c1c",   // red-600
+            "#b91c1c", // red-600
             "nominal",
-            "#b45309",   // haze-600
-            "#2d8659",   // mangrove-600 (low/other)
+            "#b45309", // haze-600
+            "#2d8659", // mangrove-600 (low/other)
           ],
           "circle-radius": 7,
           "circle-stroke-width": 2,
@@ -487,7 +470,6 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         source: sourceId,
         layout: {
           "text-field": ["get", "name"],
-          "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
           "text-size": 11,
           "text-allow-overlap": false,
         },
@@ -551,14 +533,14 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
 
     return (
       <div
-        className="relative w-full overflow-hidden rounded-xl border border-rw-gray-200 bg-rw-gray-100 shadow-sm"
+        className="relative w-full overflow-hidden rounded-xl border border-rw-smoke-200 bg-rw-smoke-100 shadow-sm"
         data-testid="hotspot-map"
         role="img"
         aria-label="Peta interaktif titik panas Riau"
       >
         {loading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80">
-            <div className="flex items-center gap-2 text-sm text-rw-gray-600">
+            <div className="flex items-center gap-2 text-sm text-rw-smoke-600">
               <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -567,7 +549,7 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
             </div>
           </div>
         )}
-        <div ref={mapContainer} className="h-[400px] sm:h-[500px] lg:h-[600px]" />
+        <div ref={mapContainer} className="w-full h-[400px] sm:h-[500px] lg:h-[600px]" />
       </div>
     );
   },

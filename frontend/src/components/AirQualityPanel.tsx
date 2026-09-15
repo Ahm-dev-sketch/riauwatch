@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getAirQualityLatest, getAirQualityHistory } from "@/lib/api";
 import type { AirQualityLatestResponse, AirQualityHistoryResponse, AQStationLatest, AQHistoryPoint } from "@/lib/types";
 import { MockBadge } from "./MockBadge";
@@ -182,10 +182,13 @@ function formatAge(seconds: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// SVG Line Chart for AQ History (no external deps)
+// SVG Line Chart for AQ History (no external deps, interactive hover tooltip)
 // ---------------------------------------------------------------------------
 
 function AQHistoryChart({ data, pollutant }: { data: AQHistoryPoint[]; pollutant: string }) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
   if (!data || data.length === 0) return null;
 
   const width = 600;
@@ -199,7 +202,7 @@ function AQHistoryChart({ data, pollutant }: { data: AQHistoryPoint[]; pollutant
   const xScale = (i: number) =>
     padding.left + (i / (data.length - 1)) * (width - padding.left - padding.right);
   const yScale = (v: number) =>
-    padding.top + (1 - (v - minVal) / (maxVal - minVal)) * (height - padding.top - padding.bottom);
+    padding.top + (1 - (v - minVal) / Math.max(1, maxVal - minVal)) * (height - padding.top - padding.bottom);
 
   // Build SVG path
   const pathD = data
@@ -215,83 +218,167 @@ function AQHistoryChart({ data, pollutant }: { data: AQHistoryPoint[]; pollutant
 
   // X-axis: show every 6th hour label
   const xTicks = data.filter((_, i) => i % 6 === 0 || i === data.length - 1);
-
   const pollutantLabel = pollutant === "pm25" ? "PM2.5" : pollutant.toUpperCase();
+  const breakpoints = pollutant === "pm25" ? ISPU_PM25 : ISPU_PM10;
+
+  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const svgX = ((e.clientX - rect.left) / rect.width) * width;
+    const relX = Math.max(padding.left, Math.min(width - padding.right, svgX));
+    const idx = Math.round(((relX - padding.left) / (width - padding.left - padding.right)) * (data.length - 1));
+    if (idx >= 0 && idx < data.length) {
+      setHoveredIdx(idx);
+    }
+  };
+
+  const hoveredPoint = hoveredIdx != null ? data[hoveredIdx] : null;
+  const hoveredCategory = hoveredPoint ? getISPUCategory(hoveredPoint.value, breakpoints) : null;
+  const hoveredTime = hoveredPoint
+    ? new Date(hoveredPoint.observed_at).toLocaleString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "numeric",
+        month: "short",
+      })
+    : null;
 
   return (
-    <div className="w-full overflow-x-auto">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="w-full h-auto"
-        role="img"
-        aria-label={`Grafik tren ${pollutantLabel} 24 jam terakhir`}
-      >
-        {/* Grid lines */}
-        {yTickValues.map((v, i) => (
-          <g key={i}>
-            <line
-              x1={padding.left}
-              y1={yScale(v)}
-              x2={width - padding.right}
-              y2={yScale(v)}
-              stroke="#e2e8f0"
-              strokeWidth="1"
-              strokeDasharray="4,4"
-            />
-            <text
-              x={padding.left - 6}
-              y={yScale(v) + 3}
-              textAnchor="end"
-              fontSize="10"
-              fill="#718096"
-            >
-              {Math.round(v)}
-            </text>
-          </g>
-        ))}
+    <div className="w-full space-y-2">
+      {/* Interactive Tooltip & Detail Bar on Hover */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 bg-rw-smoke-50 rounded-lg border border-rw-smoke-200 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-rw-smoke-500 font-medium">
+            {hoveredPoint ? "Waktu Pengamatan:" : "Detail:"}
+          </span>
+          <span className="font-semibold text-rw-peat-900">
+            {hoveredTime ? `${hoveredTime} WIB` : "Arahkan kursor ke grafik untuk detail per jam"}
+          </span>
+        </div>
+        {hoveredPoint && hoveredCategory && (
+          <div className="flex items-center gap-3">
+            <div className="flex items-baseline gap-1">
+              <span className="text-rw-smoke-500 font-medium">Konsentrasi:</span>
+              <span className="rw-readout font-bold text-rw-peat-900 text-sm">
+                {hoveredPoint.value.toFixed(1)}
+              </span>
+              <span className="text-[10px] text-rw-smoke-500">{hoveredPoint.unit}</span>
+            </div>
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${hoveredCategory.bgColor} ${hoveredCategory.color}`}>
+              {hoveredCategory.icon}
+              <span>{hoveredCategory.label}</span>
+            </div>
+          </div>
+        )}
+      </div>
 
-        {/* Area fill — peat-sienna tint */}
-        <path d={areaD} fill="rgba(139, 69, 19, 0.08)" />
-
-        {/* Line — peat-sienna */}
-        <path d={pathD} fill="none" stroke="#8b4513" strokeWidth="2" strokeLinejoin="round" />
-
-        {/* Data points (small dots) */}
-        {data.map((p, i) => (
-          <circle key={i} cx={xScale(i)} cy={yScale(p.value)} r="2" fill="#8b4513" />
-        ))}
-
-        {/* X-axis labels */}
-        {xTicks.map((p, i) => {
-          const idx = data.indexOf(p);
-          const d = new Date(p.observed_at);
-          const label = `${d.getHours().toString().padStart(2, "0")}:00`;
-          return (
-            <text
-              key={i}
-              x={xScale(idx)}
-              y={height - 8}
-              textAnchor="middle"
-              fontSize="10"
-              fill="#718096"
-            >
-              {label}
-            </text>
-          );
-        })}
-
-        {/* Y-axis label */}
-        <text
-          x={12}
-          y={height / 2}
-          textAnchor="middle"
-          fontSize="10"
-          fill="#718096"
-          transform={`rotate(-90, 12, ${height / 2})`}
+      <div className="w-full overflow-x-auto select-none">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full h-auto cursor-crosshair touch-none"
+          role="img"
+          aria-label={`Grafik tren ${pollutantLabel} 24 jam terakhir`}
+          onPointerMove={handlePointerMove}
+          onPointerLeave={() => setHoveredIdx(null)}
         >
-          {pollutantLabel} (ug/m3)
-        </text>
-      </svg>
+          {/* Grid lines */}
+          {yTickValues.map((v, i) => (
+            <g key={i}>
+              <line
+                x1={padding.left}
+                y1={yScale(v)}
+                x2={width - padding.right}
+                y2={yScale(v)}
+                stroke="#e2e8f0"
+                strokeWidth="1"
+                strokeDasharray="4,4"
+              />
+              <text
+                x={padding.left - 6}
+                y={yScale(v) + 3}
+                textAnchor="end"
+                fontSize="10"
+                fill="#718096"
+              >
+                {Math.round(v)}
+              </text>
+            </g>
+          ))}
+
+          {/* Area fill — peat-sienna tint */}
+          <path d={areaD} fill="rgba(139, 69, 19, 0.08)" />
+
+          {/* Line — peat-sienna */}
+          <path d={pathD} fill="none" stroke="#8b4513" strokeWidth="2" strokeLinejoin="round" />
+
+          {/* Data points */}
+          {data.map((p, i) => (
+            <circle
+              key={i}
+              cx={xScale(i)}
+              cy={yScale(p.value)}
+              r={hoveredIdx === i ? "4" : "2"}
+              fill={hoveredIdx === i ? "#b45309" : "#8b4513"}
+            />
+          ))}
+
+          {/* Hover Crosshair and Active Point */}
+          {hoveredIdx != null && hoveredPoint && (
+            <g pointerEvents="none">
+              <line
+                x1={xScale(hoveredIdx)}
+                y1={padding.top}
+                x2={xScale(hoveredIdx)}
+                y2={height - padding.bottom}
+                stroke="#8b4513"
+                strokeWidth="1.5"
+                strokeDasharray="3,3"
+                opacity="0.8"
+              />
+              <circle
+                cx={xScale(hoveredIdx)}
+                cy={yScale(hoveredPoint.value)}
+                r="6"
+                fill="#b45309"
+                stroke="#ffffff"
+                strokeWidth="2.5"
+              />
+            </g>
+          )}
+
+          {/* X-axis labels */}
+          {xTicks.map((p, i) => {
+            const idx = data.indexOf(p);
+            const d = new Date(p.observed_at);
+            const label = `${d.getHours().toString().padStart(2, "0")}:00`;
+            return (
+              <text
+                key={i}
+                x={xScale(idx)}
+                y={height - 8}
+                textAnchor="middle"
+                fontSize="10"
+                fill="#718096"
+              >
+                {label}
+              </text>
+            );
+          })}
+
+          {/* Y-axis label */}
+          <text
+            x={12}
+            y={height / 2}
+            textAnchor="middle"
+            fontSize="10"
+            fill="#718096"
+            transform={`rotate(-90, 12, ${height / 2})`}
+          >
+            {pollutantLabel} (ug/m3)
+          </text>
+        </svg>
+      </div>
     </div>
   );
 }
