@@ -534,6 +534,64 @@ function findArea(lat: number, lon: number): AdminAreaLookupResponse | null {
 export const mockAdminLookup: AdminAreaLookupResponse = findArea(0.5, 101.5)!;
 
 // ---------------------------------------------------------------------------
+// Param-aware mock filtering — lets E2E exercise the real filter → list flow
+// in mock mode. Mirrors backend semantics loosely: kabupaten by id→name map,
+// min_confidence as a minimum rank, date range on acquired_at (ISO compare).
+// ---------------------------------------------------------------------------
+
+import type { HotspotFeature } from "./types";
+
+const MOCK_CONF_RANK: Record<string, number> = {
+  low: 0,
+  l: 0,
+  nominal: 1,
+  n: 1,
+  high: 2,
+  h: 2,
+};
+
+function mockConfRank(value: string | null): number {
+  if (!value) return -1;
+  return MOCK_CONF_RANK[value] ?? 1;
+}
+
+export function filterMockHotspots(params: Record<string, string>): HotspotsResponse {
+  let features: HotspotFeature[] = mockHotspots.features;
+
+  if (params.kabupaten_id) {
+    const id = Number(params.kabupaten_id);
+    const name = mockHotspotsSummary.items.find((i) => i.kabupaten_id === id)?.kabupaten_name;
+    features = name ? features.filter((f) => f.properties.area_name === name) : [];
+  }
+  if (params.min_confidence) {
+    const min = mockConfRank(params.min_confidence);
+    features = features.filter((f) => mockConfRank(f.properties.confidence) >= min);
+  }
+  if (params.date_from) {
+    features = features.filter((f) => (f.properties.acquired_at ?? "") >= params.date_from);
+  }
+  if (params.date_to) {
+    const end =
+      params.date_to.length <= 10 ? `${params.date_to}T23:59:59.999Z` : params.date_to;
+    features = features.filter((f) => (f.properties.acquired_at ?? "") <= end);
+  }
+  return { ...mockHotspots, features, count: features.length };
+}
+
+export function summarizeMockHotspots(params: Record<string, string>): HotspotsSummaryResponse {
+  const features = filterMockHotspots(params).features;
+  const counts = new Map<string, number>();
+  for (const f of features) {
+    const name = f.properties.area_name ?? "Tidak diketahui";
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const items = mockHotspotsSummary.items
+    .filter((i) => counts.has(i.kabupaten_name))
+    .map((i) => ({ ...i, count: counts.get(i.kabupaten_name) ?? 0 }));
+  return { total: features.length, items };
+}
+
+// ---------------------------------------------------------------------------
 // Data Sources
 // ---------------------------------------------------------------------------
 

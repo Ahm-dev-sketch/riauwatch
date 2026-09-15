@@ -30,7 +30,7 @@ async function fetchJson<T>(path: string, params?: Record<string, string>): Prom
   if (USE_MOCKS) {
     // Dynamic import avoids bundling mock data in production
     const mod = await import("./mocks");
-    return mockLookup<T>(path, mod);
+    return mockLookup<T>(path, params ?? {}, mod);
   }
 
   const url = new URL(`/api/v1${path}`, API_BASE);
@@ -63,11 +63,15 @@ async function fetchJson<T>(path: string, params?: Record<string, string>): Prom
 // Mock router — maps paths to mock data
 // ---------------------------------------------------------------------------
 
-function mockLookup<T>(path: string, mod: typeof import("./mocks")): T {
+function mockLookup<T>(
+  path: string,
+  params: Record<string, string>,
+  mod: typeof import("./mocks"),
+): T {
   const mocks = mod;
   if (path === "/status") return mocks.mockStatus as T;
-  if (path === "/hotspots") return mocks.mockHotspots as T;
-  if (path === "/hotspots/summary") return mocks.mockHotspotsSummary as T;
+  if (path === "/hotspots") return mocks.filterMockHotspots(params) as T;
+  if (path === "/hotspots/summary") return mocks.summarizeMockHotspots(params) as T;
   if (path.startsWith("/air-quality/latest")) return mocks.mockAirQuality as T;
   if (path.startsWith("/air-quality/history")) return mocks.mockAirQualityHistory as T;
   if (path.startsWith("/weather/current")) return mocks.mockWeather as T;
