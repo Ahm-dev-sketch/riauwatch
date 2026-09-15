@@ -36,5 +36,11 @@ class Settings(BaseSettings):
     # OpenAQ settings
     openaq_bbox: str = "99.5,-2.0,103.0,2.5"
 
+    # API settings
+    frontend_origins: list[str] = ["http://localhost:3000"]
+    rate_limit_per_minute: int = 60
+    degraded_after_consecutive_failures: int = 3
+    running_stale_timeout_minutes: int = 240  # 2x expected cadence (2h * 2 = 4h)
+
 
 settings = Settings()  # type: ignore[call-arg]
