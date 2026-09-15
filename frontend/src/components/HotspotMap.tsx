@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Map, MapLayerMouseEvent, GeoJSONSource } from "maplibre-gl";
-import type { HotspotsResponse } from "@/lib/types";
+import type { HotspotsResponse, AdminAreasResponse } from "@/lib/types";
 
 // Riau province bounding box (approximate center of the province)
 const RIAU_CENTER: [number, number] = [101.5, 0.5];
@@ -14,15 +15,33 @@ const RIAU_ZOOM = 7;
 // Style "positron" chosen for a clean, readable basemap that lets data layers stand out.
 const TILE_STYLE = "https://tiles.openfreemap.org/styles/positron";
 
+// Slug mapping for kabupaten → URL path
+const NAME_TO_SLUG: Record<string, string> = {
+  "Kab. Rokan Hilir": "rokan-hilir",
+  "Kota Dumai": "dumai",
+  "Kab. Kampar": "kampar",
+  "Kab. Pelalawan": "pelalawan",
+  "Kab. Siak": "siak",
+  "Kab. Kuantan Singingi": "kuantan-singingi",
+  "Kab. Indragiri Hulu": "indragiri-hulu",
+  "Kab. Rokan Hulu": "rokan-hulu",
+  "Kab. Bengkalis": "bengkalis",
+  "Kab. Indragiri Hilir": "indragiri-hilir",
+  "Kab. Kepulauan Meranti": "kepulauan-meranti",
+};
+
 interface HotspotMapProps {
   hotspots: HotspotsResponse | null;
+  adminAreas?: AdminAreasResponse | null;
+  showBoundaries?: boolean;
   loading?: boolean;
   onHotspotClick?: (feature: HotspotsResponse["features"][0]) => void;
 }
 
-export function HotspotMap({ hotspots, loading, onHotspotClick }: HotspotMapProps) {
+export function HotspotMap({ hotspots, adminAreas, showBoundaries = false, loading, onHotspotClick }: HotspotMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Map | null>(null);
+  const router = useRouter();
   const [mapLoaded, setMapLoaded] = useState(false);
 
   // Initialize the map
@@ -242,6 +261,122 @@ export function HotspotMap({ hotspots, loading, onHotspotClick }: HotspotMapProp
       if (map) map.getCanvas().style.cursor = "";
     });
   }, [hotspots, mapLoaded, onHotspotClick]);
+
+  // Add/update boundaries layer
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    const sourceId = "boundaries";
+    const fillLayerId = "boundaries-fill";
+    const lineLayerId = "boundaries-line";
+    const labelLayerId = "boundaries-label";
+
+    // Remove existing
+    if (map.getLayer(labelLayerId)) map.removeLayer(labelLayerId);
+    if (map.getLayer(lineLayerId)) map.removeLayer(lineLayerId);
+    if (map.getLayer(fillLayerId)) map.removeLayer(fillLayerId);
+    if (map.getSource(sourceId)) map.removeSource(sourceId);
+
+    if (!showBoundaries || !adminAreas || adminAreas.features.length === 0) return;
+
+    // Add source
+    map.addSource(sourceId, {
+      type: "geojson",
+      data: adminAreas as unknown as GeoJSON.FeatureCollection,
+    });
+
+    // Fill layer (transparent fill with highlight on hover)
+    map.addLayer({
+      id: fillLayerId,
+      type: "fill",
+      source: sourceId,
+      paint: {
+        "fill-color": "rgba(39, 103, 73, 0.08)",
+        "fill-outline-color": "#276749",
+      },
+    });
+
+    // Line layer
+    map.addLayer({
+      id: lineLayerId,
+      type: "line",
+      source: sourceId,
+      paint: {
+        "line-color": "#276749",
+        "line-width": 1.5,
+        "line-dasharray": [3, 2],
+      },
+    });
+
+    // Label layer
+    map.addLayer({
+      id: labelLayerId,
+      type: "symbol",
+      source: sourceId,
+      layout: {
+        "text-field": ["get", "name"],
+        "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+        "text-size": 11,
+        "text-allow-overlap": false,
+      },
+      paint: {
+        "text-color": "#1a3a2a",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.5,
+      },
+    });
+
+    // Hover effect
+    let hoveredId: string | null = null;
+
+    const handleMouseMove = (e: MapLayerMouseEvent) => {
+      if (!e.features?.length) return;
+      const feature = e.features[0];
+      const id = String(feature.properties?.id ?? "");
+      if (hoveredId && hoveredId !== id) {
+        map.setFeatureState({ source: sourceId, id: hoveredId }, { hover: false });
+      }
+      hoveredId = id;
+      map.setFeatureState({ source: sourceId, id }, { hover: true });
+      map.getCanvas().style.cursor = "pointer";
+    };
+
+    const handleMouseLeave = () => {
+      if (hoveredId) {
+        map.setFeatureState({ source: sourceId, id: hoveredId }, { hover: false });
+        hoveredId = null;
+      }
+      map.getCanvas().style.cursor = "";
+    };
+
+    const handleClickBoundaries = (e: MapLayerMouseEvent) => {
+      if (!e.features?.length) return;
+      const feature = e.features[0];
+      const name = feature.properties?.name as string;
+      if (name && NAME_TO_SLUG[name]) {
+        router.push(`/kabupaten/${NAME_TO_SLUG[name]}`);
+      }
+    };
+
+    map.on("mousemove", fillLayerId, handleMouseMove);
+    map.on("mouseleave", fillLayerId, handleMouseLeave);
+    map.on("click", fillLayerId, handleClickBoundaries);
+
+    // Update hover paint
+    map.setPaintProperty(fillLayerId, "fill-color", [
+      "case",
+      ["boolean", ["feature-state", "hover"], false],
+      "rgba(39, 103, 73, 0.2)",
+      "rgba(39, 103, 73, 0.08)",
+    ]);
+
+    return () => {
+      map.off("mousemove", fillLayerId, handleMouseMove);
+      map.off("mouseleave", fillLayerId, handleMouseLeave);
+      map.off("click", fillLayerId, handleClickBoundaries);
+    };
+  }, [adminAreas, showBoundaries, mapLoaded, router]);
 
   return (
     <div className="relative w-full overflow-hidden rounded-xl border border-rw-gray-200 bg-rw-gray-100 shadow-sm">
