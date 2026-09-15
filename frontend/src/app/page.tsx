@@ -11,17 +11,23 @@ import { Legend } from "@/components/Legend";
 import { RiskBadge } from "@/components/RiskBadge";
 import { HotspotSummary } from "@/components/HotspotSummary";
 import { HotspotDisclaimer } from "@/components/HotspotDisclaimer";
+import { AirQualityPanel } from "@/components/AirQualityPanel";
+import { WeatherPanel } from "@/components/WeatherPanel";
+import { RiskDetailPanel } from "@/components/RiskDetailPanel";
+import { LocationPanel } from "@/components/LocationPanel";
 import {
   getStatus,
   getHotspots,
   getHotspotsSummary,
   getRiskCurrent,
+  getAdministrativeAreas,
 } from "@/lib/api";
 import type {
   StatusResponse,
   HotspotsResponse,
   HotspotsSummaryResponse,
   RiskCurrentResponse,
+  AdminAreasResponse,
 } from "@/lib/types";
 
 export default function HomePage() {
@@ -29,6 +35,7 @@ export default function HomePage() {
   const [hotspots, setHotspots] = useState<HotspotsResponse | null>(null);
   const [summary, setSummary] = useState<HotspotsSummaryResponse | null>(null);
   const [risk, setRisk] = useState<RiskCurrentResponse | null>(null);
+  const [adminAreas, setAdminAreas] = useState<AdminAreasResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<FilterState>({
     dateFrom: "",
@@ -38,6 +45,7 @@ export default function HomePage() {
   });
   const [layers, setLayers] = useState({ hotspots: true, boundaries: false });
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "air" | "weather" | "risk" | "location">("overview");
 
   // Load data on mount and when filters change
   useEffect(() => {
@@ -53,11 +61,12 @@ export default function HomePage() {
           min_confidence: filters.minConfidence || undefined,
         };
 
-        const [statusRes, hotspotsRes, summaryRes, riskRes] = await Promise.all([
+        const [statusRes, hotspotsRes, summaryRes, riskRes, adminRes] = await Promise.all([
           getStatus(),
           getHotspots({ ...params, limit: 2000 }),
           getHotspotsSummary(params),
           getRiskCurrent(),
+          getAdministrativeAreas({ level: "kabupaten_kota", simplify: 0.01 }),
         ]);
 
         if (!cancelled) {
@@ -65,6 +74,7 @@ export default function HomePage() {
           setHotspots(hotspotsRes);
           setSummary(summaryRes);
           setRisk(riskRes);
+          setAdminAreas(adminRes);
           setGeneratedAt(statusRes.generated_at);
         }
       } catch (err) {
@@ -121,7 +131,39 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Status cards: 1) Air Quality, 2) Fire Risk, 3) Hotspots */}
+        {/* Tab navigation */}
+        <section className="bg-white border-b border-rw-gray-200 sticky top-16 z-30">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <nav className="flex overflow-x-auto gap-1 -mb-px" aria-label="Panel navigasi">
+              {([
+                { id: "overview" as const, label: "Ringkasan", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+                { id: "air" as const, label: "Kualitas Udara", icon: "M17.5 19H9a7 7 0 116.71-9h1.79a4.5 4.5 0 110 9z" },
+                { id: "weather" as const, label: "Cuaca", icon: "M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" },
+                { id: "risk" as const, label: "Risiko", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
+                { id: "location" as const, label: "Lokasi Saya", icon: "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" },
+              ]).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? "border-rw-green-700 text-rw-green-800"
+                      : "border-transparent text-rw-gray-500 hover:text-rw-gray-700 hover:border-rw-gray-300"
+                  }`}
+                  aria-current={activeTab === tab.id ? "page" : undefined}
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d={tab.icon} />
+                  </svg>
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </section>
+
+        {/* Status cards — always visible */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <StatusCard
@@ -160,56 +202,90 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Risk overview (if available) */}
-        {risk && risk.assessments.length > 0 && (
-          <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4">
-            <h2 className="text-lg font-semibold text-rw-gray-900 mb-3 flex items-center gap-2">
-              <svg className="h-5 w-5 text-rw-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-              Ringkasan Risiko per Kabupaten
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {risk.assessments.slice(0, 6).map((a) => (
-                <RiskBadge key={a.area_id} assessment={a} compact />
-              ))}
-            </div>
-            {risk.note && (
-              <p className="mt-2 text-xs text-rw-gray-500 italic">
-                Catatan: {risk.note}
-              </p>
+        {/* Tab content */}
+        {activeTab === "overview" && (
+          <>
+            {/* Risk overview */}
+            {risk && risk.assessments.length > 0 && (
+              <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4">
+                <h2 className="text-lg font-semibold text-rw-gray-900 mb-3 flex items-center gap-2">
+                  <svg className="h-5 w-5 text-rw-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  Ringkasan Risiko per Kabupaten
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {risk.assessments.slice(0, 6).map((a) => (
+                    <RiskBadge key={a.area_id} assessment={a} compact />
+                  ))}
+                </div>
+                {risk.note && (
+                  <p className="mt-2 text-xs text-rw-gray-500 italic">
+                    Catatan: {risk.note}
+                  </p>
+                )}
+              </section>
             )}
+
+            {/* Map + sidebar */}
+            <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-6">
+              <h2 className="text-lg font-semibold text-rw-gray-900 mb-3 flex items-center gap-2">
+                <svg className="h-5 w-5 text-rw-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+                  <line x1="8" y1="2" x2="8" y2="18" />
+                  <line x1="16" y1="6" x2="16" y2="22" />
+                </svg>
+                Peta Titik Panas Riau
+              </h2>
+
+              <div className="flex flex-col lg:flex-row gap-4">
+                {/* Sidebar: filters, legend, summary */}
+                <aside className="lg:w-[300px] flex-shrink-0 space-y-4" aria-label="Panel sisi peta">
+                  <FilterPanel filters={filters} onChange={handleFilterChange} />
+                  <Legend visibleLayers={layers} onToggle={handleLayerToggle} />
+                  <HotspotSummary summary={summary} loading={loading} />
+                </aside>
+
+                {/* Map */}
+                <div className="flex-1 min-w-0">
+                  <HotspotMap
+                    hotspots={hotspots}
+                    adminAreas={adminAreas}
+                    showBoundaries={layers.boundaries}
+                    loading={loading}
+                  />
+                  <div className="mt-3">
+                    <HotspotDisclaimer />
+                  </div>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
+
+        {activeTab === "air" && (
+          <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
+            <AirQualityPanel />
           </section>
         )}
 
-        {/* Map + sidebar */}
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-6">
-          <h2 className="text-lg font-semibold text-rw-gray-900 mb-3 flex items-center gap-2">
-            <svg className="h-5 w-5 text-rw-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-              <line x1="8" y1="2" x2="8" y2="18" />
-              <line x1="16" y1="6" x2="16" y2="22" />
-            </svg>
-            Peta Titik Panas Riau
-          </h2>
+        {activeTab === "weather" && (
+          <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
+            <WeatherPanel />
+          </section>
+        )}
 
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Sidebar: filters, legend, summary */}
-            <aside className="lg:w-[300px] flex-shrink-0 space-y-4" aria-label="Panel sisi peta">
-              <FilterPanel filters={filters} onChange={handleFilterChange} />
-              <Legend visibleLayers={layers} onToggle={handleLayerToggle} />
-              <HotspotSummary summary={summary} loading={loading} />
-            </aside>
+        {activeTab === "risk" && (
+          <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
+            <RiskDetailPanel />
+          </section>
+        )}
 
-            {/* Map */}
-            <div className="flex-1 min-w-0">
-              <HotspotMap hotspots={hotspots} loading={loading} />
-              <div className="mt-3">
-                <HotspotDisclaimer />
-              </div>
-            </div>
-          </div>
-        </section>
+        {activeTab === "location" && (
+          <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
+            <LocationPanel />
+          </section>
+        )}
 
         {/* Data freshness footer */}
         <section className="bg-rw-gray-100 border-t border-rw-gray-200">

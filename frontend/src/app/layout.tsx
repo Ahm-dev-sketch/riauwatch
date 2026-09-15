@@ -23,7 +23,14 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://riauwatch.id"
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "RIAUWATCH — Pemantauan Lingkungan Riau",
     template: "%s | RIAUWATCH",
@@ -45,7 +52,6 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "id_ID",
-    url: "https://riauwatch.id",
     siteName: "RIAUWATCH",
     title: "RIAUWATCH — Pemantauan Lingkungan Riau",
     description:
@@ -81,6 +87,10 @@ export default function RootLayout({
       lang="id"
       className={`${dmSans.variable} ${sourceSerif.variable} ${jetbrainsMono.variable} h-full`}
     >
+      <head>
+        <meta name="theme-color" content="#276749" />
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body className="min-h-full flex flex-col bg-rw-gray-50 text-rw-gray-900 font-sans antialiased">
         <a href="#main-content" className="skip-link">
           Langsung ke konten utama
