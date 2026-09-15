@@ -52,7 +52,7 @@ def _hotspot_filters(
     """Build the shared WHERE clause + params; raises HTTP 422 on bad input."""
     try:
         start, end = resolve_date_range(
-            date_from, date_to, default_lookback_hours=48, max_range_days=30
+            date_from, date_to, default_lookback_hours=7 * 24, max_range_days=30
         )
     except ValueError as exc:
         raise unprocessable(str(exc)) from None
