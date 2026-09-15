@@ -94,7 +94,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    google: "Kzt0lxdU6kdJOTxJuQpeD6AA33-X9a0-8qRbUBEPY38",
   },
 };
 
@@ -110,6 +110,7 @@ export default function RootLayout({
     >
       <head>
         <meta name="theme-color" content="#2c1e18" />
+        <meta name="google-site-verification" content="Kzt0lxdU6kdJOTxJuQpeD6AA33-X9a0-8qRbUBEPY38" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="min-h-full flex flex-col bg-rw-smoke-50 text-rw-smoke-900 font-sans antialiased">
