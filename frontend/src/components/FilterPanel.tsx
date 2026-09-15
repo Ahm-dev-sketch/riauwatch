@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 export interface FilterState {
   dateFrom: string;
@@ -14,22 +14,20 @@ interface FilterPanelProps {
   onChange: (filters: FilterState) => void;
 }
 
-const KABUPATEN_OPTIONS = [
+export const KABUPATEN_OPTIONS = [
   { value: "", label: "Semua Kabupaten/Kota" },
-  { value: "1", label: "Kab. Rokan Hilir" },
+  { value: "11", label: "Kota Pekanbaru" },
   { value: "2", label: "Kota Dumai" },
-  { value: "3", label: "Kab. Kampar" },
-  { value: "4", label: "Kab. Pelalawan" },
-  { value: "5", label: "Kab. Siak" },
-  { value: "6", label: "Kab. Kuantan Singingi" },
-  { value: "7", label: "Kab. Indragiri Hulu" },
-  { value: "8", label: "Kab. Rokan Hulu" },
   { value: "9", label: "Kab. Bengkalis" },
   { value: "10", label: "Kab. Indragiri Hilir" },
-  { value: "11", label: "Kab. Rokan Hilir" },
-  { value: "12", label: "Kab. Meranti" },
-  { value: "13", label: "Kab. Kepulauan Meranti" },
-  { value: "14", label: "Kab. Siak" },
+  { value: "7", label: "Kab. Indragiri Hulu" },
+  { value: "3", label: "Kab. Kampar" },
+  { value: "12", label: "Kab. Kepulauan Meranti" },
+  { value: "6", label: "Kab. Kuantan Singingi" },
+  { value: "4", label: "Kab. Pelalawan" },
+  { value: "1", label: "Kab. Rokan Hilir" },
+  { value: "8", label: "Kab. Rokan Hulu" },
+  { value: "5", label: "Kab. Siak" },
 ] as const;
 
 const CONFIDENCE_OPTIONS = [
@@ -41,12 +39,14 @@ const CONFIDENCE_OPTIONS = [
 
 export function FilterPanel({ filters, onChange }: FilterPanelProps) {
   const [expanded, setExpanded] = useState(true);
+  const [kabupatenSearch, setKabupatenSearch] = useState("");
 
   const update = (key: keyof FilterState, value: string) => {
     onChange({ ...filters, [key]: value });
   };
 
   const reset = () => {
+    setKabupatenSearch("");
     onChange({
       dateFrom: "",
       dateTo: "",
@@ -55,7 +55,16 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
     });
   };
 
+  const filteredKabupaten = useMemo(() => {
+    if (!kabupatenSearch.trim()) return KABUPATEN_OPTIONS;
+    const query = kabupatenSearch.toLowerCase();
+    return KABUPATEN_OPTIONS.filter(
+      (opt) => opt.value === "" || opt.label.toLowerCase().includes(query)
+    );
+  }, [kabupatenSearch]);
+
   const hasFilters = filters.dateFrom || filters.dateTo || filters.kabupatenId || filters.minConfidence;
+  const selectedKabupaten = KABUPATEN_OPTIONS.find((k) => k.value === filters.kabupatenId);
 
   return (
     <div className="rounded-xl border border-rw-smoke-200 bg-white shadow-sm">
@@ -118,23 +127,77 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
             </div>
           </div>
 
-          {/* Kabupaten */}
+          {/* Kabupaten with search */}
           <div>
-            <label htmlFor="kabupaten" className="block text-xs font-medium text-rw-smoke-600 mb-1">
-              Kabupaten/Kota
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="kabupaten" className="block text-xs font-medium text-rw-smoke-600">
+                Kabupaten/Kota ({KABUPATEN_OPTIONS.length - 1} wilayah)
+              </label>
+              {filters.kabupatenId && (
+                <button
+                  type="button"
+                  onClick={() => update("kabupatenId", "")}
+                  className="text-[11px] text-rw-sienna-600 hover:text-rw-sienna-800 font-medium"
+                >
+                  Reset wilayah
+                </button>
+              )}
+            </div>
+
+            {/* Quick Search Input */}
+            <div className="relative mb-1.5">
+              <input
+                type="text"
+                placeholder="Cari (misal: Pekanbaru, Dumai)..."
+                value={kabupatenSearch}
+                onChange={(e) => setKabupatenSearch(e.target.value)}
+                className="w-full rounded-lg border border-rw-smoke-200 pl-7 pr-7 py-1 text-xs text-rw-smoke-800 placeholder:text-rw-smoke-400 focus:border-rw-sienna-600 focus-visible:ring-2 focus-visible:ring-rw-sienna-600 outline-none"
+                aria-label="Cari Kabupaten atau Kota"
+              />
+              <svg
+                className="absolute left-2 top-1.5 h-3.5 w-3.5 text-rw-smoke-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              {kabupatenSearch && (
+                <button
+                  type="button"
+                  onClick={() => setKabupatenSearch("")}
+                  className="absolute right-2 top-1.5 text-xs text-rw-smoke-400 hover:text-rw-smoke-600"
+                  aria-label="Hapus pencarian"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <select
               id="kabupaten"
               value={filters.kabupatenId}
               onChange={(e) => update("kabupatenId", e.target.value)}
               className="w-full rounded-lg border border-rw-smoke-200 px-2.5 py-1.5 text-sm text-rw-smoke-800 focus:border-rw-sienna-600 focus-visible:ring-2 focus-visible:ring-rw-sienna-600 focus-visible:ring-offset-1 outline-none"
             >
-              {KABUPATEN_OPTIONS.map((opt) => (
+              {filteredKabupaten.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
             </select>
+
+            {filters.kabupatenId && (
+              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-rw-smoke-600">
+                <span className="font-medium">Terpilih:</span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-rw-sienna-50 text-rw-sienna-700 font-medium">
+                  {selectedKabupaten?.label}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Confidence */}

@@ -42,17 +42,18 @@ const FALLBACK_RASTER_STYLE = {
 
 // Slug mapping for kabupaten → URL path
 const NAME_TO_SLUG: Record<string, string> = {
-  "Kab. Rokan Hilir": "rokan-hilir",
+  "Kota Pekanbaru": "pekanbaru",
   "Kota Dumai": "dumai",
-  "Kab. Kampar": "kampar",
-  "Kab. Pelalawan": "pelalawan",
-  "Kab. Siak": "siak",
-  "Kab. Kuantan Singingi": "kuantan-singingi",
-  "Kab. Indragiri Hulu": "indragiri-hulu",
-  "Kab. Rokan Hulu": "rokan-hulu",
   "Kab. Bengkalis": "bengkalis",
   "Kab. Indragiri Hilir": "indragiri-hilir",
+  "Kab. Indragiri Hulu": "indragiri-hulu",
+  "Kab. Kampar": "kampar",
   "Kab. Kepulauan Meranti": "kepulauan-meranti",
+  "Kab. Kuantan Singingi": "kuantan-singingi",
+  "Kab. Pelalawan": "pelalawan",
+  "Kab. Rokan Hilir": "rokan-hilir",
+  "Kab. Rokan Hulu": "rokan-hulu",
+  "Kab. Siak": "siak",
 };
 
 export interface HotspotMapHandle {

@@ -75,9 +75,9 @@ test("journey 3: hotspot layer loads with features", async ({ page }) => {
   }));
   expect(wired.hasSource).toBe(true);
   expect(wired.layers).toEqual([true, true, true]);
-  expect(wired.featureCount).toBe(14);
+  expect(wired.featureCount).toBe(15);
   await expect(page.getByText("Ringkasan Titik Panas")).toBeVisible();
-  await expect(page.getByText("titik panas terdeteksi")).toContainText("14");
+  await expect(page.getByText("titik panas terdeteksi")).toContainText("15");
 });
 
 // (4) Hotspot popup opens with the disclaimer. The popup is produced by the
@@ -103,7 +103,7 @@ test("journey 4: hotspot popup shows disclaimer", async ({ page }) => {
 // (5) Date/kabupaten/confidence filters change the list.
 test("journey 5: filters change the hotspot list", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("titik panas terdeteksi")).toContainText("14");
+  await expect(page.getByText("titik panas terdeteksi")).toContainText("15");
 
   // Confidence filter narrows to high-confidence features only.
   await page.locator("select#confidence").selectOption("h");
@@ -111,7 +111,7 @@ test("journey 5: filters change the hotspot list", async ({ page }) => {
 
   // Reset restores the full list.
   await page.getByRole("button", { name: "Hapus Semua Filter" }).click();
-  await expect(page.getByText("titik panas terdeteksi")).toContainText("14");
+  await expect(page.getByText("titik panas terdeteksi")).toContainText("15");
 
   // Kabupaten filter narrows to Kampar (2 features).
   await page.locator("select#kabupaten").selectOption("3");

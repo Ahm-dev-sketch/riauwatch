@@ -248,14 +248,29 @@ export const mockHotspots: HotspotsResponse = {
         hotspot_indication: true,
       },
     },
+    {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [101.4478, 0.5071] },
+      properties: {
+        satellite: "VIIRS",
+        instrument: "VIIRS",
+        confidence: "nominal",
+        confidence_value: 62,
+        daynight: "D",
+        acquired_at: TWO_HOURS_AGO,
+        area_name: "Kota Pekanbaru",
+        hotspot_indication: true,
+      },
+    },
   ],
 };
 
 export const mockHotspotsSummary: HotspotsSummaryResponse = {
-  total: 14,
+  total: 15,
   items: [
-    { kabupaten_id: 1, kabupaten_name: "Kab. Rokan Hilir", count: 2 },
+    { kabupaten_id: 11, kabupaten_name: "Kota Pekanbaru", count: 1 },
     { kabupaten_id: 2, kabupaten_name: "Kota Dumai", count: 1 },
+    { kabupaten_id: 1, kabupaten_name: "Kab. Rokan Hilir", count: 2 },
     { kabupaten_id: 3, kabupaten_name: "Kab. Kampar", count: 2 },
     { kabupaten_id: 4, kabupaten_name: "Kab. Pelalawan", count: 2 },
     { kabupaten_id: 5, kabupaten_name: "Kab. Siak", count: 1 },
@@ -263,6 +278,8 @@ export const mockHotspotsSummary: HotspotsSummaryResponse = {
     { kabupaten_id: 7, kabupaten_name: "Kab. Indragiri Hulu", count: 1 },
     { kabupaten_id: 8, kabupaten_name: "Kab. Rokan Hulu", count: 2 },
     { kabupaten_id: 9, kabupaten_name: "Kab. Bengkalis", count: 1 },
+    { kabupaten_id: 10, kabupaten_name: "Kab. Indragiri Hilir", count: 0 },
+    { kabupaten_id: 12, kabupaten_name: "Kab. Kepulauan Meranti", count: 0 },
   ],
 };
 
@@ -402,6 +419,21 @@ export const mockRisk: RiskCurrentResponse = {
         vegetation_condition: "good",
       },
     },
+    {
+      area_id: 11,
+      area_name: "Kota Pekanbaru",
+      assessed_for: TWO_HOURS_AGO,
+      horizon: "48h",
+      model_version: "rules-v0.1",
+      risk_level: "LOW",
+      score: 0.18,
+      factors: {
+        hotspot_count_7d: 1,
+        recent_trend: "stable",
+        dry_spell_days: 1,
+        vegetation_condition: "good",
+      },
+    },
   ],
   note: null,
 };
@@ -490,10 +522,8 @@ const RIUA_KABUPATEN: Array<{ id: number; name: string; bbox: number[][] }> = [
   { id: 8, name: "Kab. Rokan Hulu", bbox: [[99.8, 0.0], [100.8, 0.8]] },
   { id: 9, name: "Kab. Bengkalis", bbox: [[101.5, 1.5], [102.5, 2.3]] },
   { id: 10, name: "Kab. Indragiri Hilir", bbox: [[102.0, -0.5], [103.2, 0.5]] },
-  { id: 11, name: "Kab. Rokan Hilir", bbox: [[100.8, 1.6], [102.0, 2.3]] },
-  { id: 12, name: "Kab. Kepulauan Meranti", bbox: [[102.5, 1.8], [103.5, 2.5]] },
-  { id: 13, name: "Kab. Kepulauan Meranti", bbox: [[102.5, 1.8], [103.5, 2.5]] },
-  { id: 14, name: "Kab. Siak", bbox: [[101.5, 0.5], [102.5, 1.2]] },
+  { id: 11, name: "Kota Pekanbaru", bbox: [[101.35, 0.40], [101.55, 0.65]] },
+  { id: 12, name: "Kab. Kepulauan Meranti", bbox: [[102.5, 0.8], [103.5, 1.5]] },
 ];
 
 function bboxToMultiPolygon(bbox: number[][]): { type: "MultiPolygon"; coordinates: number[][][][] } {

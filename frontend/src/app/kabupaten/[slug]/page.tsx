@@ -21,32 +21,34 @@ import Link from "next/link";
 // ---------------------------------------------------------------------------
 
 const SLUG_TO_ID: Record<string, number> = {
-  "rokan-hilir": 1,
+  "pekanbaru": 11,
   "dumai": 2,
-  "kampar": 3,
-  "pelalawan": 4,
-  "siak": 5,
-  "kuantan-singingi": 6,
-  "indragiri-hulu": 7,
-  "rokan-hulu": 8,
   "bengkalis": 9,
   "indragiri-hilir": 10,
+  "indragiri-hulu": 7,
+  "kampar": 3,
   "kepulauan-meranti": 12,
+  "kuantan-singingi": 6,
+  "pelalawan": 4,
+  "rokan-hilir": 1,
+  "rokan-hulu": 8,
+  "siak": 5,
 };
 
 // Reverse lookup for display name
 const ID_TO_NAME: Record<number, string> = {
-  1: "Kab. Rokan Hilir",
+  11: "Kota Pekanbaru",
   2: "Kota Dumai",
-  3: "Kab. Kampar",
-  4: "Kab. Pelalawan",
-  5: "Kab. Siak",
-  6: "Kab. Kuantan Singingi",
-  7: "Kab. Indragiri Hulu",
-  8: "Kab. Rokan Hulu",
   9: "Kab. Bengkalis",
   10: "Kab. Indragiri Hilir",
+  7: "Kab. Indragiri Hulu",
+  3: "Kab. Kampar",
   12: "Kab. Kepulauan Meranti",
+  6: "Kab. Kuantan Singingi",
+  4: "Kab. Pelalawan",
+  1: "Kab. Rokan Hilir",
+  8: "Kab. Rokan Hulu",
+  5: "Kab. Siak",
 };
 
 // ---------------------------------------------------------------------------
