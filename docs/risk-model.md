@@ -29,7 +29,9 @@ Factor normalization: each factor maps its observed value to 0–100 sub-score v
 ## 3. Scoring & Levels
 
 ```
-score = Σ (available_factor_subscore × weight) / Σ (available_factor_weights) × 100
+score = Σ (available_factor_subscore × weight) / Σ (available_factor_weights)
+
+Subscores are already on a 0–100 scale, so the score is the weighted mean directly — no ×100 factor (an earlier draft carried a spurious ×100 that contradicts the worked example below; the example governs).
 ```
 
 Missing factors are **excluded and weights renormalized** — never zero-filled, never interpolated. Two guards prevent confident-looking nonsense under partial failure:
@@ -72,7 +74,7 @@ Stored in `risk_assessments.factors` (jsonb) and rendered verbatim:
 }
 ```
 
-Worked example check: Σ(sub×w) = 58.15 over Σ(w_avail) = 0.70 ⇒ score = 83.1 ⇒ VERY_HIGH. Unit tests assert the invariant `score == Σ(factor.contribution) / Σ(available weights) × 100` so docs, code, and UI can never drift apart.
+Worked example check: Σ(sub×w) = 58.15 over Σ(w_avail) = 0.70 ⇒ score = 83.1 ⇒ VERY_HIGH. Unit tests assert the invariant `score == Σ(factor.contribution) / Σ(available weights)` so docs, code, and UI can never drift apart.
 
 UI renders Observed values and Derived assessment in visually distinct sections.
 
