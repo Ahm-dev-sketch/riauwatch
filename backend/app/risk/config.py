@@ -16,19 +16,18 @@ MODEL_VERSION = "rules-v0.1"
 HORIZON = "current"
 
 # Per-factor weights (engineering defaults, NOT scientific constants).
-# Fuel stays reserved: no valid dataset adopted — never proxied by invented values.
+# Fuel & Peatland condition backed by live volumetric soil moisture (Open-Meteo).
 WEIGHTS: dict[str, float] = {
     "hotspot_density_48h": 0.35,
     "rainfall_7d": 0.20,
     "humidity_24h": 0.15,
     "temperature_24h_max": 0.10,
     "wind_24h_mean": 0.10,
-    "fuel_index": 0.10,  # reserved; hardcoded unavailable (see FUEL_AVAILABLE)
+    "fuel_index": 0.10,  # Soil Moisture / Kelembapan Gambut 0-7cm
 }
 
-# Fuel/dryness indicator: config-present but hardcoded unavailable until a valid
-# dataset (e.g. peatland map, rainfall climatology) is adopted.
-FUEL_AVAILABLE = False
+# Fuel/dryness indicator backed by live satellite volumetric soil moisture data.
+FUEL_AVAILABLE = True
 
 # Guard 1: minimum sum of available weights, else INSUFFICIENT_DATA.
 COVERAGE_FLOOR = 0.55
@@ -111,6 +110,16 @@ BREAKPOINTS: dict[str, list[tuple[float, float]]] = {
         (30, 90),
         (40, 100),
     ],
+    # Topsoil volumetric moisture 0-7cm in m3/m3 (lower -> drier/riskier).
+    # Typical tropical peat/mineral soil: <0.15 m3/m3 = highly flammable; >0.40 m3/m3 = moist/safe.
+    "fuel_index": [
+        (0.10, 100),
+        (0.15, 85),
+        (0.22, 60),
+        (0.30, 35),
+        (0.40, 10),
+        (0.48, 0),
+    ],
 }
 
 # Indonesian reason strings for unavailable factors (rendered verbatim by the UI).
@@ -120,5 +129,5 @@ UNAVAILABLE_REASONS: dict[str, str] = {
     "humidity_24h": "Data kelembapan tidak tersedia",
     "temperature_24h_max": "Data suhu tidak tersedia",
     "wind_24h_mean": "Data angin tidak tersedia",
-    "fuel_index": "Indikator bahan bakar belum tersedia (menunggu dataset yang valid)",
+    "fuel_index": "Data kelembapan tanah gambut tidak tersedia",
 }

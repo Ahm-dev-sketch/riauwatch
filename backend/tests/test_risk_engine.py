@@ -141,11 +141,15 @@ class TestGuards:
         with pytest.raises(ValueError):
             compute_risk([FactorInput(name="moon_phase", value=1.0, reason="x")])
 
-    def test_fuel_always_unavailable(self):
-        result = compute_risk(WORKED_FACTORS)
+    def test_fuel_factor_when_provided(self):
+        factors = list(WORKED_FACTORS) + [
+            FactorInput(name="fuel_index", value=0.14, subscore=85, reason="Kadar air gambut rendah (0,14 m³/m³)")
+        ]
+        result = compute_risk(factors)
         fuel = next(f for f in result.factors if f.name == "fuel_index")
-        assert fuel.available is False
-        assert "belum tersedia" in fuel.reason
+        assert fuel.available is True
+        assert fuel.subscore == 85
+        assert fuel.contribution == 8.5
 
 
 class TestLevelBands:

@@ -147,6 +147,18 @@ def wind_reason(kmh: float, subscore: float) -> str:
     return f"Kecepatan angin rata-rata {word} ({_fmt_id(kmh)} km/jam)"
 
 
+def fuel_reason(soil_moisture: float, subscore: float) -> str:
+    """Bahasa Indonesia reason for the fuel index / soil moisture factor."""
+    sm_str = _fmt_id(soil_moisture)
+    if subscore >= 80:
+        return f"Kadar air gambut sangat rendah ({sm_str} m³/m³ — lapisan atas sangat kering & mudah terbakar)"
+    if subscore >= 55:
+        return f"Kadar air gambut rendah ({sm_str} m³/m³ — lapisan tanah cukup kering)"
+    if subscore >= 25:
+        return f"Kadar air gambut sedang ({sm_str} m³/m³ — cukup lembap)"
+    return f"Kadar air gambut optimal ({sm_str} m³/m³ — basah & aman)"
+
+
 def unavailable_reason(name: str) -> str:
     """Bahasa Indonesia reason for an unavailable factor."""
     return C.UNAVAILABLE_REASONS.get(name, f"Data {name} tidak tersedia")
@@ -158,18 +170,7 @@ def compute_risk(
     observed_from: datetime | None = None,
     observed_to: datetime | None = None,
 ) -> RiskResult:
-    """Score one area from its factors.
-
-    score = Σ(contribution) / Σ(available weights), rounded to 1dp, where
-    contribution = subscore × weight (rounded to 2dp for display). This is the
-    weighted mean of 0-100 subscores, hence already on the 0-100 scale.
-    NOTE: docs/risk-model.md §3 prints a trailing "× 100", but its own §4 worked
-    example (58.15 / 0.70 ⇒ 83.1) proves the factor-100 wrong — the example's
-    exact numbers govern. Guards: hotspot_density absent/unavailable ⇒
-    INSUFFICIENT_DATA; Σ(available weights) < coverage floor ⇒ INSUFFICIENT_DATA.
-    The factors list is always fully populated (including unavailable ones) so the
-    UI can explain itself.
-    """
+    """Score one area from its factors."""
     by_name = {f.name: f for f in factors}
     for name in by_name:
         if name not in C.WEIGHTS:
@@ -177,10 +178,7 @@ def compute_risk(
 
     results: list[FactorResult] = []
     for name, weight in C.WEIGHTS.items():
-        # Fuel is hardcoded unavailable (no dataset adopted — never proxied),
-        # so it always renders as an explained-unavailable factor. If FUEL_AVAILABLE
-        # is ever flipped, a real value pipeline must be built first.
-        if name == "fuel_index":
+        if name == "fuel_index" and not C.FUEL_AVAILABLE:
             results.append(
                 FactorResult(
                     name=name,

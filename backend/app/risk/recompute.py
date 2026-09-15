@@ -30,6 +30,7 @@ from app.risk.engine import (
     FactorInput,
     RiskResult,
     compute_risk,
+    fuel_reason,
     hotspot_reason,
     humidity_reason,
     normalize_factor,
@@ -63,7 +64,8 @@ _WEATHER_SQL = text("""
     SELECT SUM(CASE WHEN w.valid_time >= :t7 THEN w.precipitation_mm END) AS rain_7d,
            AVG(CASE WHEN w.valid_time >= :t24 THEN w.humidity_pct END) AS humidity_24h,
            MAX(CASE WHEN w.valid_time >= :t24 THEN w.temperature_c END) AS temp_max_24h,
-           AVG(CASE WHEN w.valid_time >= :t24 THEN w.wind_speed_kmh END) AS wind_24h
+           AVG(CASE WHEN w.valid_time >= :t24 THEN w.wind_speed_kmh END) AS wind_24h,
+           AVG(CASE WHEN w.valid_time >= :t24 THEN (w.raw->>'soil_moisture_0_to_7cm')::float END) AS soil_moisture_24h
     FROM weather_observations w
     WHERE w.area_id = :area_id
       AND w.is_forecast = false
@@ -172,6 +174,15 @@ def _assess_area(
     else:
         inputs.append(FactorInput(name="wind_24h_mean", value=None,
                                   reason=unavailable_reason("wind_24h_mean")))
+
+    fuel = _num(w.get("soil_moisture_24h"))
+    if fuel is not None:
+        sub = normalize_factor("fuel_index", fuel)
+        inputs.append(FactorInput(name="fuel_index", value=fuel, subscore=sub,
+                                  reason=fuel_reason(fuel, sub)))
+    else:
+        inputs.append(FactorInput(name="fuel_index", value=None,
+                                  reason=unavailable_reason("fuel_index")))
 
     return compute_risk(inputs, observed_from=t7d, observed_to=ref)
 

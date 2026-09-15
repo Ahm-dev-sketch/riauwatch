@@ -22,6 +22,7 @@ HOURLY_VARIABLES = [
     "precipitation",
     "wind_speed_10m",
     "wind_direction_10m",
+    "soil_moisture_0_to_7cm",
 ]
 
 
