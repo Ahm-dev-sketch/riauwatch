@@ -9,6 +9,10 @@ out/
 # Production
 build/
 
+# Auto-generated agent files
+AGENTS.md
+CLAUDE.md
+
 # Misc
 .DS_Store
 *.tsbuildinfo
