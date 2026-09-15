@@ -122,7 +122,7 @@ test("journey 5: filters change the hotspot list", async ({ page }) => {
 // (6) Risk panel shows level + factors.
 test("journey 6: risk panel shows level and factors", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Risiko", exact: true }).click();
+  await page.getByRole("tab", { name: "Risiko", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Risiko Kebakaran" }).first()).toBeVisible();
   await expect(page.getByText("Risiko Tinggi").first()).toBeVisible();
   await expect(page.getByText("Skor Risiko").first()).toBeVisible();
@@ -133,7 +133,7 @@ test("journey 6: risk panel shows level and factors", async ({ page }) => {
 // (7) AQ panel shows PM2.5 + ISPU category + timestamp.
 test("journey 7: air quality panel shows PM2.5, ISPU, timestamp", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Kualitas Udara" }).click();
+  await page.getByRole("tab", { name: "Kualitas Udara" }).click();
   await expect(page.getByRole("button", { name: "PM2.5" }).first()).toBeVisible();
   await expect(page.getByText("38.5").first()).toBeVisible();
   await expect(page.getByText("Sedang").first()).toBeVisible();
@@ -152,7 +152,7 @@ test.describe("journey 8: geolocation", () => {
     await stubMapStyle(page);
     try {
       await page.goto("/");
-      await page.getByRole("button", { name: "Lokasi Saya" }).click();
+      await page.getByRole("tab", { name: "Lokasi Saya" }).click();
       await page.getByRole("button", { name: "Gunakan Lokasi Saya" }).click();
       await expect(page.getByText("Kab. Kampar").first()).toBeVisible({ timeout: 15_000 });
       await expect(page.getByText("Stasiun Kualitas Udara Terdekat")).toBeVisible();
@@ -163,7 +163,7 @@ test.describe("journey 8: geolocation", () => {
 
   test("denial shows graceful message", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Lokasi Saya" }).click();
+    await page.getByRole("tab", { name: "Lokasi Saya" }).click();
     await page.getByRole("button", { name: "Gunakan Lokasi Saya" }).click();
     await expect(page.getByText("Akses lokasi ditolak")).toBeVisible({ timeout: 15_000 });
   });
@@ -179,16 +179,118 @@ test.describe("journey 9: mobile viewport", () => {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - 390);
     expect(overflow).toBeLessThanOrEqual(0);
     for (const tab of ["Ringkasan", "Kualitas Udara", "Cuaca", "Risiko", "Lokasi Saya"]) {
-      await expect(page.getByRole("button", { name: tab, exact: true })).toBeVisible();
+      await expect(page.getByRole("tab", { name: tab, exact: true })).toBeVisible();
     }
+    // Map is on the overview tab — verify it works before switching tabs
     await waitForMap(page);
-    await page.getByRole("button", { name: "Risiko", exact: true }).click();
+    await page.getByRole("tab", { name: "Risiko", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Risiko Kebakaran" }).first()).toBeVisible();
   });
 });
 
-// (10) Stale/unavailable rendering + data-sources page.
-test("journey 10: freshness, disclaimer, data sources", async ({ page }) => {
+// (10) Keyboard-accessible hotspot list: focus items, Enter selects, "Tampilkan di peta" works.
+test("journey 10: keyboard-accessible hotspot list", async ({ page }) => {
+  await page.goto("/");
+  await waitForMap(page);
+  await page.waitForFunction(() => (window.__rwHotspots?.length ?? 0) > 0, {
+    timeout: 30_000,
+  });
+
+  // The list should be visible
+  const list = page.getByTestId("hotspot-list");
+  await expect(list).toBeVisible();
+  await expect(page.getByTestId("hotspot-list-items")).toBeVisible();
+
+  // First item should be focusable via Tab
+  const firstItem = page.getByTestId("hotspot-item-0");
+  await firstItem.focus();
+  await expect(firstItem).toBeFocused();
+
+  // Enter key should select the item (triggers highlight + popup)
+  await firstItem.press("Enter");
+  // The item should now be highlighted (aria-selected=true)
+  await expect(firstItem).toHaveAttribute("aria-selected", "true");
+
+  // Arrow Down should move focus to next item
+  await firstItem.press("ArrowDown");
+  const secondItem = page.getByTestId("hotspot-item-1");
+  await expect(secondItem).toBeFocused();
+
+  // "Tampilkan di peta" button should be present on hover
+  const showOnMapBtn = page.getByTestId("show-on-map-1");
+  // Hover to reveal the button
+  await secondItem.hover();
+  await expect(showOnMapBtn).toBeVisible();
+  await expect(showOnMapBtn).toContainText("Tampilkan di peta");
+});
+
+// (11) Tile-failure fallback: when tiles fail, notice appears + list keeps working.
+test("journey 11: tile failure shows fallback notice with retry", async ({ page }) => {
+  // Override the tile route to return 500 errors instead of the empty style
+  await page.route("https://tiles.openfreemap.org/**", async (route) => {
+    await route.abort("failed");
+  });
+
+  await page.goto("/");
+  // When tiles fail, MapLibre's "load" event may never fire (so __rwMap/
+  // __rwHotspots are never set). The hotspot list renders from the API data
+  // independently of tiles, so wait for it via DOM instead.
+  const list = page.getByTestId("hotspot-list");
+  await expect(list).toBeVisible({ timeout: 30_000 });
+
+  // The tile error notice should appear in the list panel
+  const notice = page.getByTestId("tile-error-notice");
+  await expect(notice).toBeVisible({ timeout: 20_000 });
+  await expect(notice).toContainText("Peta dasar tidak dapat dimuat");
+  await expect(notice).toContainText("Data tetap tersedia di daftar");
+
+  // Retry button should be visible
+  const retryBtn = page.getByTestId("retry-tiles-btn");
+  await expect(retryBtn).toBeVisible();
+
+  // The hotspot list should still be fully functional
+  const listItems = page.getByTestId("hotspot-list-items");
+  await expect(listItems).toBeVisible();
+  const firstItem = page.getByTestId("hotspot-item-0");
+  await expect(firstItem).toBeVisible();
+  await firstItem.focus();
+  await firstItem.press("Enter");
+  await expect(firstItem).toHaveAttribute("aria-selected", "true");
+});
+
+// (12) Tab keyboard navigation works via Arrow keys.
+test("journey 12: tab keyboard navigation", async ({ page }) => {
+  await page.goto("/");
+  const firstTab = page.locator("#tab-overview");
+  await firstTab.focus();
+  await expect(firstTab).toHaveAttribute("aria-selected", "true");
+
+  // ArrowRight moves to next tab
+  await firstTab.press("ArrowRight");
+  const airTab = page.locator("#tab-air");
+  await expect(airTab).toBeFocused();
+  await expect(airTab).toHaveAttribute("aria-selected", "true");
+
+  // ArrowRight again moves to weather
+  await airTab.press("ArrowRight");
+  const weatherTab = page.locator("#tab-weather");
+  await expect(weatherTab).toBeFocused();
+  await expect(weatherTab).toHaveAttribute("aria-selected", "true");
+
+  // Home key wraps to first tab
+  await weatherTab.press("Home");
+  await expect(firstTab).toBeFocused();
+  await expect(firstTab).toHaveAttribute("aria-selected", "true");
+
+  // End key jumps to last tab
+  await firstTab.press("End");
+  const locationTab = page.locator("#tab-location");
+  await expect(locationTab).toBeFocused();
+  await expect(locationTab).toHaveAttribute("aria-selected", "true");
+});
+
+// (13) Stale/unavailable rendering + data-sources page.
+test("journey 13: freshness, disclaimer, data sources", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Status data:")).toBeVisible();
   await expect(page.getByText("Observasi terakhir").first()).toBeVisible();
