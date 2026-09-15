@@ -84,6 +84,70 @@ function formatAcquiredAt(acquiredAt: string | null): string {
   });
 }
 
+// Sub-location descriptor based on Riau geography & coordinates
+function describeRiauLocation(lat: number, lon: number, areaName: string | null): string {
+  const base = areaName || "Provinsi Riau";
+  
+  // Specific landmark & sector checks across Riau
+  if (base.includes("Pekanbaru")) {
+    if (lat < 0.50) return `${base} (Sektor Selatan / Tampan - Marpoyan)`;
+    if (lat > 0.54) return `${base} (Sektor Utara / Rumbai)`;
+    return `${base} (Sektor Pusat Kota / Sukajadi)`;
+  }
+  if (base.includes("Dumai")) {
+    if (lon > 101.50) return `${base} (Kawasan Industri Pelintung - Medang Kampai)`;
+    if (lon < 101.35) return `${base} (Sektor Sungai Sembilan)`;
+    return `${base} (Sektor Dumai Timur / Pesisir)`;
+  }
+  if (base.includes("Bengkalis")) {
+    if (lon < 101.40) return `${base} (Daratan Duri / Mandau - Pinggir)`;
+    if (lon > 102.10) return `${base} (Pulau Bengkalis / Bantan)`;
+    return `${base} (Sektor Bukit Batu / Siak Kecil)`;
+  }
+  if (base.includes("Rokan Hilir")) {
+    if (lat > 2.0) return `${base} (Pesisir Bagan Siapi-api / Sinaboi)`;
+    if (lon < 100.6) return `${base} (Sektor Bagan Sinembah / Simpang Kanan)`;
+    return `${base} (Sektor Tanah Putih / Kubu)`;
+  }
+  if (base.includes("Rokan Hulu")) {
+    if (lat > 1.0) return `${base} (Sektor Tambusai / Rambah Hilir)`;
+    return `${base} (Sektor Pasir Pengaraian / Rambah)`;
+  }
+  if (base.includes("Pelalawan")) {
+    if (lon > 102.4) return `${base} (Sektor Teluk Meranti / Kuala Kampar)`;
+    if (lon < 101.8) return `${base} (Sektor Langgam / Pangkalan Kerinci)`;
+    return `${base} (Sektor Pangkalan Kuras / Bunut)`;
+  }
+  if (base.includes("Siak")) {
+    if (lon < 101.5) return `${base} (Sektor Kandis / Minas)`;
+    if (lon > 102.1) return `${base} (Sektor Sungai Apit / Sabak Auh)`;
+    return `${base} (Sektor Siak Sri Indrapura / Mempura)`;
+  }
+  if (base.includes("Kampar")) {
+    if (lat > 0.5) return `${base} (Sektor Tapung / Tapung Hilir)`;
+    if (lat < 0.1) return `${base} (Sektor Kampar Kiri / Gunung Sahilan)`;
+    return `${base} (Sektor Bangkinang / Salo)`;
+  }
+  if (base.includes("Indragiri Hulu")) {
+    if (lat > 0.0) return `${base} (Sektor Rengat / Kuala Cenaku)`;
+    return `${base} (Sektor Seberida / Batang Cenaku)`;
+  }
+  if (base.includes("Indragiri Hilir")) {
+    if (lat < -0.6) return `${base} (Sektor Keritang / Kemuning - Reteh)`;
+    if (lon > 103.2) return `${base} (Pesisir Kuala Indragiri / Mandah)`;
+    return `${base} (Sektor Tembilahan / Batang Tuaka)`;
+  }
+  if (base.includes("Kuantan Singingi")) {
+    if (lat > -0.4) return `${base} (Sektor Singingi / Singingi Hilir)`;
+    return `${base} (Sektor Teluk Kuantan / Kuantan Tengah)`;
+  }
+  if (base.includes("Kepulauan Meranti")) {
+    return `${base} (Kepulauan Tebing Tinggi / Rangsang)`;
+  }
+
+  return `${base} (Koordinat: ${lat.toFixed(3)}°, ${lon.toFixed(3)}°)`;
+}
+
 // Render a MapLibre popup for one hotspot feature (shared production path).
 function showPopupForFeature(
   map: Map,
@@ -92,9 +156,8 @@ function showPopupForFeature(
   feature: HotspotFeature,
   onHotspotClick?: (feature: HotspotFeature) => void,
 ): void {
-  // Dynamically load Popup to match the maplibregl instance
   import("maplibre-gl").then((maplibregl) => {
-    new maplibregl.Popup()
+    new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "320px" })
       .setLngLat(coords)
       .setHTML(buildHotspotPopupHtml(props, coords))
       .addTo(map);
@@ -103,18 +166,27 @@ function showPopupForFeature(
   onHotspotClick?.(feature);
 }
 
-function humanizeConfidence(conf: string | null, confValue: number | null): string {
+function humanizeConfidence(conf: string | null, confValue: number | null): { label: string; color: string; bg: string } {
   const c = (conf || "").toLowerCase();
   if (c === "h" || c === "high") {
-    return confValue != null ? `Tinggi / High (${confValue}%)` : "Tinggi / High (≥70%)";
+    return {
+      label: confValue != null ? `Tinggi (${confValue}%)` : "Tinggi (≥70%)",
+      color: "#ffffff",
+      bg: "#0f172a", // Solid Black
+    };
   }
   if (c === "n" || c === "nominal") {
-    return confValue != null ? `Sedang / Nominal (${confValue}%)` : "Sedang / Nominal (30–69%)";
+    return {
+      label: confValue != null ? `Sedang (${confValue}%)` : "Sedang (30–69%)",
+      color: "#92400e",
+      bg: "#fef3c7", // Amber
+    };
   }
-  if (c === "l" || c === "low") {
-    return confValue != null ? `Rendah / Low (${confValue}%)` : "Rendah / Low (<30%)";
-  }
-  return confValue != null ? `${confValue}%` : "-";
+  return {
+    label: confValue != null ? `Rendah (${confValue}%)` : "Rendah (<30%)",
+    color: "#1e4d35",
+    bg: "#f0fff4", // Mangrove
+  };
 }
 
 function humanizeSatellite(sat: string | null): string {
@@ -135,48 +207,64 @@ function humanizeInstrument(inst: string | null, sat: string | null): string {
   return inst || sat || "-";
 }
 
-function humanizeDayNight(dn: string | null): string {
-  if (!dn) return "";
-  return dn.toUpperCase() === "D" ? "Siang Hari ☀️" : "Malam Hari 🌙";
+function humanizeDayNight(dn: string | null): { text: string; isDay: boolean } | null {
+  if (!dn) return null;
+  return dn.toUpperCase() === "D"
+    ? { text: "Siang Hari", isDay: true }
+    : { text: "Malam Hari", isDay: false };
 }
 
-// Popup HTML for one hotspot feature
+// Popup HTML for one hotspot feature (No Emojis — professional SVG icons)
 function buildHotspotPopupHtml(
   props: Record<string, unknown>,
   coords: [number, number],
 ): string {
-  const confText = humanizeConfidence(
+  const conf = humanizeConfidence(
     props.confidence as string | null,
     props.confidence_value != null ? Number(props.confidence_value) : null,
   );
   const satText = humanizeSatellite(props.satellite as string | null);
   const instText = humanizeInstrument(props.instrument as string | null, props.satellite as string | null);
-  const dnText = humanizeDayNight(props.daynight as string | null);
+  const dn = humanizeDayNight(props.daynight as string | null);
   const frpVal = props.frp != null ? Number(props.frp) : null;
+  const areaName = (props.area_name as string) || null;
+  const locationDesc = describeRiauLocation(coords[1], coords[0], areaName);
 
   return `
-    <div style="font-family:'DM Sans',system-ui,sans-serif;min-width:240px;padding:6px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;border-bottom:1px solid #e7e5e4;padding-bottom:6px">
-        <span style="font-weight:700;font-size:14px;color:#2c1e18">
-          ${(props.area_name as string) || "Provinsi Riau"}
-        </span>
-        ${dnText ? `<span style="font-size:11px;font-weight:600;color:#8b4513;background:#faf3eb;padding:2px 6px;border-radius:4px">${dnText}</span>` : ""}
+    <div style="font-family:'DM Sans',system-ui,sans-serif;min-width:250px;padding:4px">
+      <!-- Title & Location Header -->
+      <div style="margin-bottom:8px;border-bottom:1px solid #e7e5e4;padding-bottom:6px">
+        <div style="font-weight:700;font-size:14px;color:#2c1e18;line-height:1.3">
+          ${locationDesc}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+          <span style="font-size:10.5px;font-weight:700;color:${conf.color};background:${conf.bg};padding:2px 7px;border-radius:999px">
+            Tingkat Kepercayaan: ${conf.label}
+          </span>
+          ${dn ? `<span style="font-size:10.5px;font-weight:600;color:#57534e;background:#f5f5f4;padding:2px 6px;border-radius:4px">${dn.text}</span>` : ""}
+        </div>
       </div>
-      <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px;color:#44403c">
+
+      <!-- Attributes Grid -->
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:11.5px;color:#44403c">
         <span style="color:#78716c;font-weight:500">Koordinat</span>
         <span style="font-family:'JetBrains Mono',monospace;font-weight:600">${coords[1].toFixed(4)}°, ${coords[0].toFixed(4)}°</span>
+        
         <span style="color:#78716c;font-weight:500">Waktu Deteksi</span>
         <span style="font-weight:600">${formatAcquiredAt(props.acquired_at as string | null)}</span>
-        <span style="color:#78716c;font-weight:500">Kepercayaan</span>
-        <span style="font-weight:600;color:${(props.confidence as string) === "high" || (props.confidence as string) === "h" ? "#b91c1c" : "#b45309"}">${confText}</span>
+        
         <span style="color:#78716c;font-weight:500">Satelit</span>
         <span style="font-weight:600">${satText}</span>
+        
         <span style="color:#78716c;font-weight:500">Sensor</span>
         <span>${instText}</span>
-        ${frpVal != null ? `<span style="color:#78716c;font-weight:500">Daya Panas (FRP)</span><span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:#b91c1c">${frpVal.toFixed(1)} MW (Megawatt)</span>` : ""}
+        
+        ${frpVal != null ? `<span style="color:#78716c;font-weight:500">Daya Panas (FRP)</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#b91c1c">${frpVal.toFixed(1)} MW (Megawatt)</span>` : ""}
       </div>
-      <div style="margin-top:10px;padding-top:6px;border-top:1px solid #e7e5e4;font-size:10.5px;color:#78716c;line-height:1.4">
-        <em>⚠️ Indikasi panas sensor satelit, BUKAN kebakaran terkonfirmasi. Verifikasi lapangan diperlukan.</em>
+
+      <!-- Mandatory Trust Disclaimer -->
+      <div style="margin-top:8px;padding-top:6px;border-top:1px solid #e7e5e4;font-size:10px;color:#78716c;line-height:1.35">
+        <strong>Pemberitahuan:</strong> Indikasi panas sensor satelit, <strong>BUKAN kebakaran terkonfirmasi</strong>. Verifikasi lapangan diperlukan.
       </div>
     </div>
   `;
@@ -213,13 +301,11 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         const map = mapRef.current;
         if (!map) return;
         const coords = feature.geometry.coordinates as [number, number];
-        // Fly to the feature
         map.flyTo({
           center: coords,
           zoom: Math.max(map.getZoom(), 10),
           duration: 800,
         });
-        // Open popup
         showPopupForFeature(
           map,
           coords,
@@ -293,7 +379,6 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
           map.resize();
           reportTileStatus(false);
           tileErrorCountRef.current = 0;
-          // Expose testing/E2E hook safely on window
           if (typeof window !== "undefined") {
             (window as unknown as { __rwMap?: Map }).__rwMap = map;
           }
@@ -316,7 +401,6 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
       if (!map || !mapLoaded) return;
 
       if (!selectedKabupatenId) {
-        // Reset to full Riau view
         map.flyTo({
           center: RIAU_CENTER,
           zoom: RIAU_ZOOM,
@@ -326,10 +410,7 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
       }
 
       const idNum = Number(selectedKabupatenId);
-      // Find area in adminAreas
-      const areaFeature = adminAreas?.features.find(
-        (f) => f.properties.id === idNum
-      );
+      const areaFeature = adminAreas?.features.find((f) => f.properties.id === idNum);
 
       if (areaFeature) {
         try {
@@ -370,7 +451,7 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         }
       }
 
-      // Fallback: if hotspots exist for this area, center on the first hotspot
+      // Fallback: center on first area hotspot
       const areaHotspots = hotspots?.features.filter(
         (f) => (f.properties as unknown as Record<string, unknown>).kabupaten_id === idNum
       );
@@ -408,7 +489,7 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         clusterRadius: 50,
       });
 
-      // Expose wired feature list and popup trigger for test/automation
+      // Expose for E2E testing
       if (typeof window !== "undefined") {
         const w = window as unknown as {
           __rwHotspots?: HotspotFeature[];
@@ -442,20 +523,20 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
             ["get", "point_count"],
             "#2d8659", // mangrove-600 (< 5)
             10,
-            "#b45309", // haze-600 (5-15)
+            "#d97706", // amber-600 (5-15)
             30,
-            "#b91c1c", // red-600 (15+)
+            "#0f172a", // solid jet black (15+)
           ],
           "circle-radius": [
             "step",
             ["get", "point_count"],
-            15, // default
+            16,
             10,
-            22,
+            24,
             30,
-            30,
+            32,
           ],
-          "circle-stroke-width": 2,
+          "circle-stroke-width": 2.5,
           "circle-stroke-color": "#ffffff",
         },
       });
@@ -475,7 +556,8 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         },
       });
 
-      // Individual hotspot points
+      // Individual hotspot points: Distinct Color Scheme
+      // High = Solid Black (#0f172a), Nominal = Amber/Orange (#d97706), Low = Mangrove Green (#16a34a)
       map.addLayer({
         id: unclusteredLayerId,
         type: "circle",
@@ -486,12 +568,16 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
             "match",
             ["get", "confidence"],
             "high",
-            "#b91c1c", // red-600
+            "#0f172a", // Solid Jet Black for High
+            "h",
+            "#0f172a", // Solid Jet Black for h
             "nominal",
-            "#b45309", // haze-600
-            "#2d8659", // mangrove-600 (low/other)
+            "#d97706", // Amber / Oranye for Nominal
+            "n",
+            "#d97706", // Amber / Oranye for n
+            "#16a34a", // Mangrove Green for Low / Other
           ],
-          "circle-radius": 7,
+          "circle-radius": 7.5,
           "circle-stroke-width": 2,
           "circle-stroke-color": "#ffffff",
         },
@@ -555,7 +641,6 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
       const lineLayerId = "boundaries-line";
       const labelLayerId = "boundaries-label";
 
-      // Remove existing
       if (map.getLayer(labelLayerId)) map.removeLayer(labelLayerId);
       if (map.getLayer(lineLayerId)) map.removeLayer(lineLayerId);
       if (map.getLayer(fillLayerId)) map.removeLayer(fillLayerId);
@@ -563,13 +648,11 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
 
       if (!showBoundaries || !adminAreas || adminAreas.features.length === 0) return;
 
-      // Add source
       map.addSource(sourceId, {
         type: "geojson",
         data: adminAreas as unknown as GeoJSON.FeatureCollection,
       });
 
-      // Fill layer (transparent fill with highlight on hover)
       map.addLayer({
         id: fillLayerId,
         type: "fill",
@@ -580,7 +663,6 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         },
       });
 
-      // Line layer
       map.addLayer({
         id: lineLayerId,
         type: "line",
@@ -592,7 +674,6 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         },
       });
 
-      // Label layer
       map.addLayer({
         id: labelLayerId,
         type: "symbol",
@@ -609,7 +690,6 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         },
       });
 
-      // Hover effect
       let hoveredId: string | null = null;
 
       const handleMouseMove = (e: MapLayerMouseEvent) => {
@@ -645,7 +725,6 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
       map.on("mouseleave", fillLayerId, handleMouseLeave);
       map.on("click", fillLayerId, handleClickBoundaries);
 
-      // Update hover paint
       map.setPaintProperty(fillLayerId, "fill-color", [
         "case",
         ["boolean", ["feature-state", "hover"], false],
@@ -678,7 +757,33 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
             </div>
           </div>
         )}
+
+        {/* Map Canvas */}
         <div ref={mapContainer} className="w-full h-[400px] sm:h-[500px] lg:h-[600px]" />
+
+        {/* Floating Quick Map Legend Card (Top-Left on Map) */}
+        <div className="absolute top-3 left-3 z-10 hidden sm:flex items-center gap-3 bg-white/95 backdrop-blur-xs px-3 py-2 rounded-lg border border-rw-smoke-200/80 shadow-md text-xs pointer-events-none select-none">
+          <div className="flex items-center gap-1.5 font-semibold text-rw-peat-900">
+            <svg className="h-3.5 w-3.5 text-rw-sienna-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2" />
+              <polyline points="2 17 12 22 22 17" />
+              <polyline points="2 12 12 17 22 12" />
+            </svg>
+            <span>Titik Panas:</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="h-3 w-3 rounded-full bg-slate-900 ring-1 ring-white" />
+            <span className="text-slate-900 font-bold">Tinggi</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="h-3 w-3 rounded-full bg-amber-500 ring-1 ring-white" />
+            <span className="text-amber-800 font-medium">Sedang</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="h-3 w-3 rounded-full bg-green-600 ring-1 ring-white" />
+            <span className="text-green-800 font-medium">Rendah</span>
+          </div>
+        </div>
       </div>
     );
   },

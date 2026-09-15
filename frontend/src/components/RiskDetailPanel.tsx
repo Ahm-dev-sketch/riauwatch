@@ -113,9 +113,9 @@ const FACTOR_NAME_MAP: Record<string, string> = {
 };
 
 const FACTOR_VALUE_MAP: Record<string, string> = {
-  increasing: "Meningkat ↗ (Waspada)",
-  decreasing: "Menurun ↘ (Membaik)",
-  stable: "Stabil → (Tetap)",
+  increasing: "Tren Meningkat (Waspada)",
+  decreasing: "Tren Menurun (Membaik)",
+  stable: "Stabil (Tetap)",
   stressed: "Kering & Mudah Terbakar",
   moderate: "Cukup Lembap",
   good: "Lembap & Aman",

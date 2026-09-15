@@ -40,19 +40,19 @@ export function Legend({ visibleLayers, onToggle }: LegendProps) {
         <span className="text-xs text-rw-smoke-500 font-medium">Tingkat Kepercayaan Titik Panas</span>
         <div className="mt-2 space-y-1.5">
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-rw-red-600 ring-1 ring-white" />
-            <span className="text-xs text-rw-smoke-700">Tinggi / High (&ge;70%)</span>
+            <div className="h-3 w-3 rounded-full bg-slate-900 ring-1 ring-white" />
+            <span className="text-xs text-rw-smoke-900 font-bold">Tinggi / High (&ge;70%) — Hitam</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-rw-haze-600 ring-1 ring-white" />
-            <span className="text-xs text-rw-smoke-700">Sedang / Nominal (&ge;30%)</span>
+            <div className="h-3 w-3 rounded-full bg-amber-500 ring-1 ring-white" />
+            <span className="text-xs text-amber-800 font-medium">Sedang / Nominal (&ge;30%) — Oranye</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-rw-mangrove-600 ring-1 ring-white" />
-            <span className="text-xs text-rw-smoke-700">Rendah / Low (&lt;30%)</span>
+            <div className="h-3 w-3 rounded-full bg-green-600 ring-1 ring-white" />
+            <span className="text-xs text-green-800 font-medium">Rendah / Low (&lt;30%) — Hijau</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-rw-mangrove-600 ring-2 ring-rw-mangrove-100" />
+            <div className="h-3.5 w-3.5 rounded-full bg-green-700 ring-2 ring-green-200 flex items-center justify-center text-[8px] font-bold text-white" />
             <span className="text-xs text-rw-smoke-700">Klaster Titik Panas</span>
           </div>
         </div>

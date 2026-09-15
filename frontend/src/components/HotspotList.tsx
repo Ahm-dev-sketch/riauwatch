@@ -43,12 +43,12 @@ function confidenceColor(confidence: string | null): string {
   switch (c) {
     case "h":
     case "high":
-      return "bg-rw-red-100 text-rw-red-600";
+      return "bg-slate-900 text-white";
     case "n":
     case "nominal":
-      return "bg-rw-haze-100 text-rw-haze-700";
+      return "bg-amber-100 text-amber-800";
     default:
-      return "bg-rw-mangrove-100 text-rw-mangrove-700";
+      return "bg-green-100 text-green-800";
   }
 }
 
