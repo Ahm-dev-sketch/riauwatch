@@ -2,6 +2,7 @@
 
 from contextlib import asynccontextmanager
 from typing import Callable
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,11 +32,22 @@ def create_app() -> FastAPI:
     # Vercel Serverless path-restoration middleware
     @app.middleware("http")
     async def restore_vercel_path_middleware(request: Request, call_next: Callable) -> Response:
-        matched_path = request.headers.get("x-matched-path") or request.headers.get("x-forwarded-uri")
-        if matched_path and matched_path != "/api/index.py" and not matched_path.endswith(".py"):
-            # Strip query string if present in header
-            clean_path = matched_path.split("?")[0]
-            request.scope["path"] = clean_path
+        for header_name in (
+            "x-forwarded-uri",
+            "x-forwarded-url",
+            "x-vercel-matched-path",
+            "x-matched-path",
+            "x-original-uri",
+            "x-rewrite-url",
+        ):
+            header_val = request.headers.get(header_name)
+            if header_val:
+                if "://" in header_val:
+                    header_val = urlparse(header_val).path
+                clean_path = header_val.split("?")[0]
+                if clean_path and clean_path != "/api/index.py" and not clean_path.endswith(".py"):
+                    request.scope["path"] = clean_path
+                    break
         return await call_next(request)
 
     # CORS middleware
@@ -56,7 +68,6 @@ def create_app() -> FastAPI:
     # Root informational endpoint
     @app.get("/", include_in_schema=False)
     @app.get("/api", include_in_schema=False)
-    @app.get("/api/index.py", include_in_schema=False)
     async def root_info():
         return {
             "name": "RIAUWATCH API",
