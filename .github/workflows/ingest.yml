@@ -1,0 +1,60 @@
+name: Scheduled Environmental Data Ingestion
+
+on:
+  schedule:
+    # Runs every 2 hours (00:00, 02:00, 04:00, 06:00, 08:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00 UTC)
+    - cron: "0 */2 * * *"
+  workflow_dispatch: # Allows manual trigger from GitHub web UI anytime
+
+jobs:
+  ingest:
+    name: Run Ingestion Pipeline
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Ingest Open-Meteo Weather Data
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LOG_LEVEL: INFO
+        run: |
+          python -m app.worker weather-points --past-days 2
+
+      - name: Ingest NASA FIRMS Hotspots Data
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
+          LOG_LEVEL: INFO
+        run: |
+          python -m app.worker firms-hotspots
+
+      - name: Ingest OpenAQ Air Quality Data
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENAQ_API_KEY: ${{ secrets.OPENAQ_API_KEY }}
+          LOG_LEVEL: INFO
+        run: |
+          python -m app.worker air-quality
+
+      - name: Recompute Rule-based Fire Risk Assessments
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LOG_LEVEL: INFO
+        run: |
+          python -m app.worker risk-recompute
