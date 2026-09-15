@@ -76,12 +76,14 @@ def _domain_status(
 
     degraded = False
     for runs in by_source.values():
+        if not runs:
+            continue
         completed = [str(r["status"]) for r in runs if r["status"] != "running"]
-        stale = any(
-            r["status"] == "running"
-            and isinstance(r["started_at"], datetime)
-            and r["started_at"] < stale_cutoff
-            for r in runs
+        latest_run = runs[0]
+        stale = (
+            latest_run["status"] == "running"
+            and isinstance(latest_run["started_at"], datetime)
+            and latest_run["started_at"] < stale_cutoff
         )
         if compute_degraded(completed, stale, threshold):
             degraded = True

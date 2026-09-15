@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 from geoalchemy2 import WKTElement
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -189,7 +189,6 @@ class OpenMeteoRunner(IngestionRunner):
         wind_speed_kmh = raw_record.get("wind_speed_10m")
         wind_direction_deg = raw_record.get("wind_direction_10m")
 
-        # Build geom as WKTElement
         geom = WKTElement(f"POINT({lon} {lat})", srid=4326)
 
         return {
@@ -198,41 +197,41 @@ class OpenMeteoRunner(IngestionRunner):
             "geom": geom,
             "valid_time": valid_time,
             "is_forecast": is_forecast,
-            "temperature_c": temperature_c,
-            "humidity_pct": humidity_pct,
-            "precipitation_mm": precipitation_mm,
-            "wind_speed_kmh": wind_speed_kmh,
-            "wind_direction_deg": wind_direction_deg,
+            "temperature_c": float(temperature_c) if temperature_c is not None else None,
+            "humidity_pct": float(humidity_pct) if humidity_pct is not None else None,
+            "precipitation_mm": float(precipitation_mm) if precipitation_mm is not None else None,
+            "wind_speed_kmh": float(wind_speed_kmh) if wind_speed_kmh is not None else None,
+            "wind_direction_deg": float(wind_direction_deg) if wind_direction_deg is not None else None,
             "raw": raw_record,
         }
 
     def store(self, session: Session, normalized_records: list[dict]) -> int:
-        """Upsert weather observations using ON CONFLICT DO UPDATE (latest-cycle-wins)."""
+        """Upsert weather observations using bulk executemany (latest-cycle-wins)."""
         if not normalized_records:
             return 0
 
-        inserted_count = 0
-        for record in normalized_records:
-            stmt = pg_insert(WeatherObservation).values(**record)
-            # ON CONFLICT DO UPDATE on the unique constraint columns
-            # Latest-cycle-wins: update all measure columns + ingested_at
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["source_id", "area_id", "valid_time", "is_forecast"],
-                set_={
-                    "temperature_c": record["temperature_c"],
-                    "humidity_pct": record["humidity_pct"],
-                    "precipitation_mm": record["precipitation_mm"],
-                    "wind_speed_kmh": record["wind_speed_kmh"],
-                    "wind_direction_deg": record["wind_direction_deg"],
-                    "ingested_at": datetime.now(UTC),
-                    "raw": record["raw"],
-                },
-            )
-            result = session.execute(stmt)
-            if result.rowcount is not None and result.rowcount > 0:  # type: ignore[attr-defined]
-                inserted_count += 1
+        stmt = pg_insert(WeatherObservation)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["source_id", "area_id", "valid_time", "is_forecast"],
+            set_={
+                "temperature_c": stmt.excluded.temperature_c,
+                "humidity_pct": stmt.excluded.humidity_pct,
+                "precipitation_mm": stmt.excluded.precipitation_mm,
+                "wind_speed_kmh": stmt.excluded.wind_speed_kmh,
+                "wind_direction_deg": stmt.excluded.wind_direction_deg,
+                "raw": stmt.excluded.raw,
+                "ingested_at": datetime.now(UTC),
+            },
+        )
 
-        session.commit()
+        batch_size = 250
+        inserted_count = 0
+        for i in range(0, len(normalized_records), batch_size):
+            batch = normalized_records[i : i + batch_size]
+            session.execute(stmt, batch)
+            inserted_count += len(batch)
+            session.commit()
+
         return inserted_count
 
     def transform(self, session: Session) -> None:
