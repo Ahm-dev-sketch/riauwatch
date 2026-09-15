@@ -1,0 +1,14 @@
+# Environment variables
+.env.local
+.env.*.local
+
+# Next.js
+.next/
+out/
+
+# Production
+build/
+
+# Misc
+.DS_Store
+*.tsbuildinfo

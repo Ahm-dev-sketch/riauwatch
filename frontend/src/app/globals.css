@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+/*
+ * RIAUWATCH Design Tokens
+ * Trustworthy environmental monitoring — public service, not trading dashboard.
+ * Colors derived from Riau's natural landscape: tropical forest, peatland, sky.
+ * NO glassmorphism, NO heavy gradients, NO crypto aesthetics.
+ */
+
+:root {
+  /* --- Primary: Deep forest green — trustworthy, environmental --- */
+  --rw-green-900: #1a3a2a;
+  --rw-green-800: #1e4d35;
+  --rw-green-700: #276749;
+  --rw-green-600: #2d8659;
+  --rw-green-500: #38a169;
+  --rw-green-100: #c6f6d5;
+  --rw-green-50: #f0fff4;
+
+  /* --- Accent: Warm amber for alerts and emphasis --- */
+  --rw-amber-600: #d69e2e;
+  --rw-amber-500: #ecc94b;
+  --rw-amber-100: #fefcbf;
+
+  /* --- Risk / Status Colors: text + icon, never color alone --- */
+  --rw-red-600: #c53030;
+  --rw-red-100: #fed7d7;
+  --rw-orange-600: #dd6b20;
+  --rw-orange-100: #feebc8;
+  --rw-yellow-500: #ecc94b;
+  --rw-yellow-100: #fefcbf;
+
+  /* --- Neutrals --- */
+  --rw-gray-950: #0d1117;
+  --rw-gray-900: #1a202c;
+  --rw-gray-800: #2d3748;
+  --rw-gray-700: #4a5568;
+  --rw-gray-600: #718096;
+  --rw-gray-500: #a0aec0;
+  --rw-gray-200: #e2e8f0;
+  --rw-gray-100: #edf2f7;
+  --rw-gray-50: #f7fafc;
+  --rw-white: #ffffff;
+
+  /* --- Typography --- */
+  --font-sans: "DM Sans", "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Source Serif 4", "Georgia", serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  /* --- Spacing / Sizing --- */
+  --sidebar-width: 320px;
+
+  --background: var(--rw-gray-50);
+  --foreground: var(--rw-gray-900);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-rw-green-900: var(--rw-green-900);
+  --color-rw-green-800: var(--rw-green-800);
+  --color-rw-green-700: var(--rw-green-700);
+  --color-rw-green-600: var(--rw-green-600);
+  --color-rw-green-500: var(--rw-green-500);
+  --color-rw-green-100: var(--rw-green-100);
+  --color-rw-green-50: var(--rw-green-50);
+  --color-rw-amber-600: var(--rw-amber-600);
+  --color-rw-amber-500: var(--rw-amber-500);
+  --color-rw-amber-100: var(--rw-amber-100);
+  --color-rw-red-600: var(--rw-red-600);
+  --color-rw-red-100: var(--rw-red-100);
+  --color-rw-orange-600: var(--rw-orange-600);
+  --color-rw-orange-100: var(--rw-orange-100);
+  --color-rw-yellow-500: var(--rw-yellow-500);
+  --color-rw-yellow-100: var(--rw-yellow-100);
+  --color-rw-gray-950: var(--rw-gray-950);
+  --color-rw-gray-900: var(--rw-gray-900);
+  --color-rw-gray-800: var(--rw-gray-800);
+  --color-rw-gray-700: var(--rw-gray-700);
+  --color-rw-gray-600: var(--rw-gray-600);
+  --color-rw-gray-500: var(--rw-gray-500);
+  --color-rw-gray-200: var(--rw-gray-200);
+  --color-rw-gray-100: var(--rw-gray-100);
+  --color-rw-gray-50: var(--rw-gray-50);
+  --color-rw-white: var(--rw-white);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+/* Base reset — minimal, respectful */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* MapLibre GL requires explicit sizing */
+.maplibregl-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* Custom scrollbar for the sidebar panels */
+.rw-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.rw-scrollbar::-webkit-scrollbar-track {
+  background: var(--rw-gray-100);
+}
+.rw-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--rw-gray-500);
+  border-radius: 3px;
+}
+
+/* Mock data badge pulse */
+@keyframes mock-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.rw-mock-badge {
+  animation: mock-pulse 2s ease-in-out infinite;
+}
+
+/* Focus visible for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--rw-green-600);
+  outline-offset: 2px;
+}
+
+/* Skip to content link */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  z-index: 9999;
+  padding: 0.75rem 1.5rem;
+  background: var(--rw-green-800);
+  color: var(--rw-white);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+.skip-link:focus {
+  top: 0;
+}
