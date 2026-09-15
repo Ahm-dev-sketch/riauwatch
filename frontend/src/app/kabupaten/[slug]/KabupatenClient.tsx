@@ -1,0 +1,191 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+import { MockBadge } from "@/components/MockBadge";
+import { AirQualityPanel } from "@/components/AirQualityPanel";
+import { WeatherPanel } from "@/components/WeatherPanel";
+import { RiskDetailPanel } from "@/components/RiskDetailPanel";
+import { getHotspotsSummary } from "@/lib/api";
+import type { HotspotsSummaryResponse } from "@/lib/types";
+
+export const SLUG_TO_ID: Record<string, number> = {
+  "pekanbaru": 11,
+  "dumai": 2,
+  "bengkalis": 9,
+  "indragiri-hilir": 10,
+  "indragiri-hulu": 7,
+  "kampar": 3,
+  "kepulauan-meranti": 12,
+  "kuantan-singingi": 6,
+  "pelalawan": 4,
+  "rokan-hilir": 1,
+  "rokan-hulu": 8,
+  "siak": 5,
+};
+
+export const ID_TO_NAME: Record<number, string> = {
+  11: "Kota Pekanbaru",
+  2: "Kota Dumai",
+  9: "Kab. Bengkalis",
+  10: "Kab. Indragiri Hilir",
+  7: "Kab. Indragiri Hulu",
+  3: "Kab. Kampar",
+  12: "Kab. Kepulauan Meranti",
+  6: "Kab. Kuantan Singingi",
+  4: "Kab. Pelalawan",
+  1: "Kab. Rokan Hilir",
+  8: "Kab. Rokan Hulu",
+  5: "Kab. Siak",
+};
+
+function KabupatenNotFound() {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main id="main-content" className="flex-1 flex items-center justify-center">
+        <div className="text-center px-4">
+          <div className="rounded-xl border border-rw-gray-200 bg-white p-8 shadow-sm max-w-md mx-auto">
+            <svg className="h-12 w-12 text-rw-gray-300 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="8" y1="12" x2="16" y2="12" />
+            </svg>
+            <h1 className="text-xl font-bold text-rw-gray-900 mb-2">
+              Kabupaten Tidak Ditemukan
+            </h1>
+            <p className="text-sm text-rw-gray-500 mb-4">
+              Slug kabupaten tidak valid atau belum tersedia di sistem.
+            </p>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-lg bg-rw-peat-900 px-4 py-2 text-sm font-medium text-white hover:bg-rw-peat-800 transition-colors"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              Kembali ke Beranda
+            </Link>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+function getTrendNote(count: number): string {
+  if (count === 0) return "Tidak ada titik panas terdeteksi";
+  if (count <= 3) return "Jumlah rendah";
+  if (count <= 8) return "Jumlah sedang";
+  return "Jumlah tinggi — perlu perhatian";
+}
+
+export function KabupatenClient({ slug }: { slug: string }) {
+  const [summary, setSummary] = useState<HotspotsSummaryResponse | null>(null);
+
+  const kabupatenId = SLUG_TO_ID[slug] ?? null;
+  const kabupatenName = kabupatenId ? (ID_TO_NAME[kabupatenId] || slug) : "";
+  const validSlug = kabupatenId !== null;
+
+  useEffect(() => {
+    if (kabupatenId === null) return;
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await getHotspotsSummary({ kabupaten_id: kabupatenId! });
+        if (!cancelled) setSummary(res);
+      } catch {
+        // Non-critical
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [kabupatenId]);
+
+  if (!validSlug) {
+    return <KabupatenNotFound />;
+  }
+
+  const hotspotCount = summary?.items.find((i) => i.kabupaten_id === kabupatenId)?.count ?? 0;
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+
+      <main id="main-content" className="flex-1">
+        {/* Hero */}
+        <section className="bg-white border-b border-rw-smoke-200">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div className="flex items-center gap-3 mb-2">
+              <Link
+                href="/"
+                className="text-rw-smoke-400 hover:text-rw-smoke-600 transition-colors"
+                aria-label="Kembali ke Beranda"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+              </Link>
+              <h1 className="text-2xl sm:text-3xl font-bold text-rw-peat-900 tracking-tight font-display">
+                {kabupatenName}
+              </h1>
+              <MockBadge />
+            </div>
+            <p className="text-sm text-rw-smoke-500">
+              Data lingkungan dan risiko kebakaran untuk wilayah {kabupatenName}
+            </p>
+          </div>
+        </section>
+
+        {/* Jerebu Strip */}
+        <div
+          className="rw-jerebu-strip h-2"
+          style={{
+            background: "linear-gradient(90deg, #8b4513 0%, #a0522d 40%, #cd853f 70%, #8b4513 100%)",
+          }}
+          aria-hidden="true"
+        />
+
+        {/* Content */}
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          {/* Quick stats banner */}
+          <div className="rw-instrument-panel rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm" style={{ borderLeftColor: "var(--rw-sienna-600)" }}>
+            <h2 className="text-base font-bold text-rw-peat-900 mb-2">
+              Ringkasan Titik Panas {kabupatenName}
+            </h2>
+            <div className="flex items-baseline gap-2">
+              <span className="rw-readout text-3xl font-bold text-rw-peat-900">
+                {hotspotCount}
+              </span>
+              <span className="text-sm text-rw-smoke-500">titik panas terdeteksi</span>
+            </div>
+            <p className="text-xs text-rw-smoke-500 mt-1">
+              {getTrendNote(hotspotCount)}
+            </p>
+          </div>
+
+          {/* Risk Detail for this kabupaten */}
+          <section>
+            <RiskDetailPanel kabupatenId={kabupatenId} />
+          </section>
+
+          {/* Air Quality for this kabupaten */}
+          <section>
+            <AirQualityPanel />
+          </section>
+
+          {/* Weather for this kabupaten */}
+          <section>
+            <WeatherPanel kabupatenId={kabupatenId} />
+          </section>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
