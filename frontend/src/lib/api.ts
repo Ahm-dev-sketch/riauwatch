@@ -17,7 +17,7 @@ import type {
 } from "./types";
 
 const API_BASE = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+  process.env.NEXT_PUBLIC_API_URL || "https://riauwatch-api.vercel.app"
 ).replace(/\/+$/, "");
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
