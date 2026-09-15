@@ -152,14 +152,17 @@ export async function getWeatherCurrent(params?: {
   return fetchJson<WeatherCurrentResponse>("/weather/current", p);
 }
 
-export async function getWeatherForecast(params: {
-  near: string;
+export async function getWeatherForecast(params?: {
+  near?: string;
+  kabupaten_id?: number;
   hours?: number;
 }): Promise<WeatherForecastResponse> {
-  return fetchJson<WeatherForecastResponse>("/weather/forecast", {
-    near: params.near,
-    hours: String(params.hours ?? 24),
-  });
+  const p: Record<string, string> = {
+    hours: String(params?.hours ?? 24),
+  };
+  if (params?.near) p.near = params.near;
+  if (params?.kabupaten_id) p.kabupaten_id = String(params.kabupaten_id);
+  return fetchJson<WeatherForecastResponse>("/weather/forecast", p);
 }
 
 export async function getRiskCurrent(params?: {

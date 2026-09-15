@@ -358,10 +358,13 @@ export function RiskDetailPanel({ kabupatenId }: { kabupatenId?: number }) {
   const [data, setData] = useState<RiskCurrentResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      setLoading(true);
+      setError(null);
       try {
         const params = kabupatenId ? { kabupaten_id: kabupatenId } : undefined;
         const res = await getRiskCurrent(params);
@@ -376,7 +379,7 @@ export function RiskDetailPanel({ kabupatenId }: { kabupatenId?: number }) {
     return () => {
       cancelled = true;
     };
-  }, [kabupatenId]);
+  }, [kabupatenId, retryCount]);
 
   if (loading) {
     return (
@@ -395,13 +398,26 @@ export function RiskDetailPanel({ kabupatenId }: { kabupatenId?: number }) {
   if (error) {
     return (
       <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-2 text-rw-orange-600">
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-          <span className="text-sm font-medium">{error}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-rw-orange-600">
+            <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            <span className="text-sm font-medium">{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRetryCount((c) => c + 1)}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-rw-peat-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rw-peat-800 transition-colors"
+          >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M1 4v6h6M23 20v-6h-6" />
+              <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" />
+            </svg>
+            Coba Lagi
+          </button>
         </div>
       </div>
     );
