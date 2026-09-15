@@ -8,8 +8,7 @@ import { MockBadge } from "./MockBadge";
 // ---------------------------------------------------------------------------
 // ISPU Category Breakpoint Table (Indonesian Standard — PM2.5)
 // Source: Peraturan Pemerintah No. 22/2021 tentang Perlindungan dan Pengelolaan
-// Lingkungan Hidup,referensi standar ISPU — KLHK
-// Code comment: backend will serve these categories in a later pass (Phase 6+)
+// Lingkungan Hidup, referensi standar ISPU — KLHK
 // ---------------------------------------------------------------------------
 
 interface ISPUBreakpoint {
@@ -30,9 +29,11 @@ const ISPU_PM25: ISPUBreakpoint[] = [
     color: "text-rw-green-700",
     bgColor: "bg-rw-green-100",
     icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-        <polyline points="22 4 12 14.01 9 11.01" />
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
       </svg>
     ),
   },
@@ -40,38 +41,40 @@ const ISPU_PM25: ISPUBreakpoint[] = [
     label: "Sedang",
     min: 15.6,
     max: 55.4,
-    color: "text-rw-yellow-700",
-    bgColor: "bg-rw-yellow-100",
-    icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="8" x2="12" y2="12" />
-        <line x1="12" y1="16" x2="12.01" y2="16" />
-      </svg>
-    ),
-  },
-  {
-    label: "Tidak Sehat untuk Kelompok Sensitif",
-    min: 55.5,
-    max: 155.4,
     color: "text-rw-orange-600",
     bgColor: "bg-rw-orange-100",
     icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="8" y1="15" x2="16" y2="15" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
       </svg>
     ),
   },
   {
     label: "Tidak Sehat",
-    min: 155.5,
-    max: 255.4,
+    min: 55.5,
+    max: 150.4,
     color: "text-rw-red-600",
     bgColor: "bg-rw-red-100",
     icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M16 16s-1.5-2-4-2-4 2-4 2" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
+      </svg>
+    ),
+  },
+  {
+    label: "Sangat Tidak Sehat",
+    min: 150.5,
+    max: 250.4,
+    color: "text-purple-700",
+    bgColor: "bg-purple-100",
+    icon: (
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
         <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
         <line x1="12" y1="9" x2="12" y2="13" />
         <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -79,13 +82,13 @@ const ISPU_PM25: ISPUBreakpoint[] = [
     ),
   },
   {
-    label: "Sangat Tidak Sehat",
-    min: 255.5,
-    max: 500,
-    color: "text-rw-red-800",
+    label: "Berbahaya",
+    min: 250.5,
+    max: Infinity,
+    color: "text-red-900",
     bgColor: "bg-red-200",
     icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
         <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
         <line x1="12" y1="9" x2="12" y2="13" />
         <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -94,7 +97,7 @@ const ISPU_PM25: ISPUBreakpoint[] = [
   },
 ];
 
-// PM10 breakpoints (ug/m3) — also referenced for PM10 where available
+// PM10 breakpoints (ug/m3) based on Indonesian ISPU standard
 const ISPU_PM10: ISPUBreakpoint[] = [
   {
     label: "Baik",
@@ -103,9 +106,11 @@ const ISPU_PM10: ISPUBreakpoint[] = [
     color: "text-rw-green-700",
     bgColor: "bg-rw-green-100",
     icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-        <polyline points="22 4 12 14.01 9 11.01" />
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
       </svg>
     ),
   },
@@ -113,38 +118,40 @@ const ISPU_PM10: ISPUBreakpoint[] = [
     label: "Sedang",
     min: 51,
     max: 150,
-    color: "text-rw-yellow-700",
-    bgColor: "bg-rw-yellow-100",
-    icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="8" x2="12" y2="12" />
-        <line x1="12" y1="16" x2="12.01" y2="16" />
-      </svg>
-    ),
-  },
-  {
-    label: "Tidak Sehat untuk Kelompok Sensitif",
-    min: 151,
-    max: 350,
     color: "text-rw-orange-600",
     bgColor: "bg-rw-orange-100",
     icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="8" y1="15" x2="16" y2="15" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
       </svg>
     ),
   },
   {
     label: "Tidak Sehat",
-    min: 351,
-    max: 420,
+    min: 151,
+    max: 350,
     color: "text-rw-red-600",
     bgColor: "bg-rw-red-100",
     icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M16 16s-1.5-2-4-2-4 2-4 2" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
+      </svg>
+    ),
+  },
+  {
+    label: "Sangat Tidak Sehat",
+    min: 351,
+    max: 420,
+    color: "text-purple-700",
+    bgColor: "bg-purple-100",
+    icon: (
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
         <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
         <line x1="12" y1="9" x2="12" y2="13" />
         <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -152,13 +159,13 @@ const ISPU_PM10: ISPUBreakpoint[] = [
     ),
   },
   {
-    label: "Sangat Tidak Sehat",
+    label: "Berbahaya",
     min: 421,
-    max: 600,
-    color: "text-rw-red-800",
+    max: Infinity,
+    color: "text-red-900",
     bgColor: "bg-red-200",
     icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
         <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
         <line x1="12" y1="9" x2="12" y2="13" />
         <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -182,7 +189,7 @@ function formatAge(seconds: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// SVG Line Chart for AQ History (no external deps, interactive hover tooltip)
+// SVG Line Chart for AQ History with Interactive Hover Tooltip
 // ---------------------------------------------------------------------------
 
 function AQHistoryChart({ data, pollutant }: { data: AQHistoryPoint[]; pollutant: string }) {
@@ -390,32 +397,52 @@ function AQHistoryChart({ data, pollutant }: { data: AQHistoryPoint[]; pollutant
 function StationCard({
   station,
   selectedPollutant,
+  isSelected,
+  onSelectStation,
   onSelectPollutant,
 }: {
   station: AQStationLatest;
   selectedPollutant: string;
+  isSelected: boolean;
+  onSelectStation: () => void;
   onSelectPollutant: (pollutant: string) => void;
 }) {
   const availablePollutants = station.observations.map((o) => o.pollutant);
-  const currentObs = station.observations.find((o) => o.pollutant === selectedPollutant);
-  const breakpoints = selectedPollutant === "pm25" ? ISPU_PM25 : ISPU_PM10;
+  const currentObs = station.observations.find((o) => o.pollutant === selectedPollutant) ?? station.observations[0];
+  const activePollutant = currentObs ? currentObs.pollutant : selectedPollutant;
+  const breakpoints = activePollutant === "pm25" ? ISPU_PM25 : ISPU_PM10;
   const category = currentObs ? getISPUCategory(currentObs.value, breakpoints) : null;
 
   return (
-    <div className="rw-instrument-panel rounded-xl border border-rw-smoke-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow" style={{ borderLeftColor: "var(--rw-sienna-400)" }}>
+    <div
+      onClick={onSelectStation}
+      className={`rw-instrument-panel rounded-xl border cursor-pointer transition-all p-4 shadow-2xs hover:shadow-md ${
+        isSelected
+          ? "border-rw-sienna-600 ring-2 ring-rw-sienna-600/20 bg-rw-sienna-50/20"
+          : "border-rw-smoke-200 bg-white hover:border-rw-smoke-300"
+      }`}
+      style={{ borderLeftColor: isSelected ? "var(--rw-sienna-600)" : "var(--rw-sienna-400)" }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h4 className="text-sm font-semibold text-rw-gray-900">
-            {station.station_name || `Stasiun #${station.station_id}`}
-          </h4>
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-bold text-rw-peat-900">
+              {station.station_name || `Stasiun #${station.station_id}`}
+            </h4>
+            {isSelected && (
+              <span className="text-[10px] bg-rw-sienna-600 text-white font-semibold px-1.5 py-0.5 rounded">
+                Aktif di Grafik
+              </span>
+            )}
+          </div>
           {station.distance_km != null && station.distance_km > 0 && (
-            <p className="text-xs text-rw-gray-500 mt-0.5">
-              {station.distance_km.toFixed(1)} km dari lokasi Anda
+            <p className="text-xs text-rw-smoke-500 mt-0.5">
+              {station.distance_km.toFixed(1)} km dari titik acuan
             </p>
           )}
         </div>
         {category && (
-          <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${category.bgColor} ${category.color}`}>
+          <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${category.bgColor} ${category.color}`}>
             {category.icon}
             <span>{category.label}</span>
           </div>
@@ -424,16 +451,19 @@ function StationCard({
 
       {/* Pollutant selector */}
       {availablePollutants.length > 1 && (
-        <div className="flex gap-1 mt-3 mb-3">
+        <div className="flex gap-1.5 mt-3 mb-3" onClick={(e) => e.stopPropagation()}>
           {availablePollutants.map((p) => (
             <button
               key={p}
               type="button"
-              onClick={() => onSelectPollutant(p)}
+              onClick={() => {
+                onSelectPollutant(p);
+                onSelectStation();
+              }}
               className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
                 selectedPollutant === p
-                  ? "bg-rw-green-100 text-rw-green-800"
-                  : "bg-rw-gray-100 text-rw-gray-600 hover:bg-rw-gray-200"
+                  ? "bg-rw-sienna-600 text-white shadow-2xs"
+                  : "bg-rw-smoke-100 text-rw-smoke-700 hover:bg-rw-smoke-200"
               }`}
             >
               {p === "pm25" ? "PM2.5" : p.toUpperCase()}
@@ -445,32 +475,32 @@ function StationCard({
       {/* Current reading */}
       {currentObs ? (
         <div className="flex items-baseline gap-2 mb-2">
-          <span className="rw-readout text-2xl font-bold text-rw-gray-900">
+          <span className="rw-readout text-2xl font-bold text-rw-peat-900">
             {currentObs.value.toFixed(1)}
           </span>
-          <span className="text-sm text-rw-gray-500">{currentObs.unit}</span>
+          <span className="text-sm text-rw-smoke-500">{currentObs.unit}</span>
         </div>
       ) : (
-        <p className="text-sm text-rw-gray-500 italic mb-2">
+        <p className="text-sm text-rw-smoke-500 italic mb-2">
           Data tidak tersedia untuk polutan ini
         </p>
       )}
 
       {/* Metadata */}
-      <div className="flex items-center justify-between text-xs text-rw-gray-500">
+      <div className="flex items-center justify-between text-xs text-rw-smoke-500">
         <span>
           {currentObs ? `Diperbarui ${formatAge(currentObs.age_seconds)}` : ""}
         </span>
-        {station.distance_km != null && station.distance_km > 0 && (
-          <span>Stasiun terdekat</span>
-        )}
+        <span className="text-[11px] text-rw-sienna-700 font-medium">
+          {isSelected ? "✓ Sedang Ditampilkan" : "Klik untuk Lihat Tren →"}
+        </span>
       </div>
 
       {/* ISPU Reference Note */}
       {category && (
-        <div className="mt-2 pt-2 border-t border-rw-gray-100">
-          <p className="text-[10px] text-rw-gray-400 leading-relaxed">
-            Kategori ISPU — KLHK (Peraturan Pemerintah No. 22/2021). Backend akan menyajikan kategori ini secara resmi di masa mendatang.
+        <div className="mt-2.5 pt-2 border-t border-rw-smoke-100">
+          <p className="text-[10px] text-rw-smoke-400 leading-relaxed">
+            Kategori ISPU — KLHK (PP No. 22/2021).
           </p>
         </div>
       )}
@@ -515,7 +545,9 @@ export function AirQualityPanel() {
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Load history when station or pollutant changes
@@ -534,16 +566,18 @@ export function AirQualityPanel() {
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedStation, selectedPollutant]);
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-rw-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm">
         <div className="animate-pulse space-y-3">
-          <div className="h-5 bg-rw-gray-100 rounded w-1/3" />
-          <div className="h-4 bg-rw-gray-100 rounded w-2/3" />
-          <div className="h-4 bg-rw-gray-100 rounded w-1/2" />
+          <div className="h-5 bg-rw-smoke-100 rounded w-1/3" />
+          <div className="h-4 bg-rw-smoke-100 rounded w-2/3" />
+          <div className="h-4 bg-rw-smoke-100 rounded w-1/2" />
         </div>
       </div>
     );
@@ -551,7 +585,7 @@ export function AirQualityPanel() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-rw-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-2 text-rw-orange-600">
           <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
@@ -566,33 +600,40 @@ export function AirQualityPanel() {
 
   if (!data || data.stations.length === 0) {
     return (
-      <div className="rounded-xl border border-rw-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-2 text-rw-gray-500">
+      <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center gap-2 text-rw-smoke-500">
           <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
             <line x1="8" y1="12" x2="16" y2="12" />
           </svg>
-          <span className="text-sm">Data kualitas udara sementara tidak tersedia</span>
+          <span className="text-sm font-medium">Data kualitas udara sementara tidak tersedia</span>
         </div>
       </div>
     );
   }
 
+  const activeStationObj = data.stations.find((s) => s.station_id === selectedStation) ?? data.stations[0];
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-rw-gray-900 flex items-center gap-2">
-          <svg className="h-5 w-5 text-rw-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M17.5 19H9a7 7 0 116.71-9h1.79a4.5 4.5 0 110 9z" />
-          </svg>
-          Kualitas Udara
-        </h2>
+        <div>
+          <h2 className="text-lg font-bold text-rw-peat-900 flex items-center gap-2 font-display">
+            <svg className="h-5 w-5 text-rw-sienna-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M17.5 19H9a7 7 0 116.71-9h1.79a4.5 4.5 0 110 9z" />
+            </svg>
+            Pemantauan Kualitas Udara Riau
+          </h2>
+          <p className="text-xs text-rw-smoke-500 mt-0.5">
+            Pantauan polutan partikulat dari seluruh stasiun SPKUA di Provinsi Riau
+          </p>
+        </div>
         <MockBadge />
       </div>
 
       {stale && (
         <div className="rounded-lg border border-rw-haze-700/30 bg-rw-haze-50 p-3">
-          <p className="text-xs text-rw-smoke-700 flex items-center gap-1.5">
+          <p className="text-xs text-rw-smoke-700 flex items-center gap-1.5 font-medium">
             <svg className="h-3.5 w-3.5 text-rw-haze-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
@@ -603,33 +644,105 @@ export function AirQualityPanel() {
         </div>
       )}
 
-      {/* Station list */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {data.stations.map((station) => (
-          <StationCard
-            key={station.station_id}
-            station={station}
-            selectedPollutant={selectedPollutant}
-            onSelectPollutant={(p) => {
-              setSelectedPollutant(p);
-              setSelectedStation(station.station_id);
-            }}
-          />
-        ))}
-      </div>
-
-      {/* History chart */}
+      {/* Interactive 24-Hour Trend Chart Card with Station & Pollutant Switcher */}
       {history && history.points.length > 0 && (
-        <div className="rounded-xl border border-rw-gray-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-rw-gray-900 mb-3">
-            Tren {history.pollutant === "pm25" ? "PM2.5" : history.pollutant.toUpperCase()} — 24 Jam Terakhir
-          </h3>
+        <div className="rounded-xl border border-rw-smoke-200 bg-white p-4 sm:p-5 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-rw-smoke-100 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-rw-peat-900 flex items-center gap-2">
+                <span>Tren {history.pollutant === "pm25" ? "PM2.5" : history.pollutant.toUpperCase()} — 24 Jam Terakhir</span>
+              </h3>
+              <p className="text-xs text-rw-smoke-500 mt-0.5">
+                Stasiun terpilih: <strong className="text-rw-sienna-700">{activeStationObj?.station_name}</strong>
+              </p>
+            </div>
+
+            {/* Pollutant Toggle */}
+            <div className="flex items-center gap-1.5 self-start sm:self-auto bg-rw-smoke-100 p-1 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setSelectedPollutant("pm25")}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  selectedPollutant === "pm25"
+                    ? "bg-white text-rw-sienna-700 shadow-2xs font-bold"
+                    : "text-rw-smoke-600 hover:text-rw-smoke-900"
+                }`}
+              >
+                PM2.5
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedPollutant("pm10")}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  selectedPollutant === "pm10"
+                    ? "bg-white text-rw-sienna-700 shadow-2xs font-bold"
+                    : "text-rw-smoke-600 hover:text-rw-smoke-900"
+                }`}
+              >
+                PM10
+              </button>
+            </div>
+          </div>
+
+          {/* Interactive Station Switcher Pills Bar */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-rw-smoke-700 uppercase tracking-wide">
+                Pilih Stasiun Pemantau ({data.stations.length} Stasiun Tersedia):
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {data.stations.map((st) => {
+                const isCurrent = st.station_id === selectedStation;
+                return (
+                  <button
+                    key={st.station_id}
+                    type="button"
+                    onClick={() => setSelectedStation(st.station_id)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all flex items-center gap-1.5 ${
+                      isCurrent
+                        ? "bg-rw-peat-900 text-white border-rw-peat-900 shadow-2xs font-semibold"
+                        : "bg-white text-rw-smoke-700 border-rw-smoke-200 hover:border-rw-smoke-400 hover:bg-rw-smoke-50"
+                    }`}
+                  >
+                    <span className={`h-2 w-2 rounded-full ${isCurrent ? "bg-rw-sienna-400" : "bg-rw-smoke-300"}`} />
+                    <span>{st.station_name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Chart */}
           <AQHistoryChart data={history.points} pollutant={history.pollutant} />
-          <p className="mt-2 text-[10px] text-rw-gray-400">
-            Stasiun: {data.stations.find((s) => s.station_id === history.station_id)?.station_name || `#${history.station_id}`}
-          </p>
         </div>
       )}
+
+      {/* Station list header */}
+      <div className="pt-2">
+        <h3 className="text-sm font-bold text-rw-peat-900 mb-2">
+          Daftar Stasiun Pemantau & Pembacaan Terkini
+        </h3>
+        <p className="text-xs text-rw-smoke-500 mb-3">
+          Klik pada salah satu stasiun di bawah untuk melihat grafik tren dan riwayat 24 jamnya.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {data.stations.map((station) => (
+            <StationCard
+              key={station.station_id}
+              station={station}
+              selectedPollutant={selectedPollutant}
+              isSelected={station.station_id === selectedStation}
+              onSelectStation={() => setSelectedStation(station.station_id)}
+              onSelectPollutant={(p) => {
+                setSelectedPollutant(p);
+                setSelectedStation(station.station_id);
+              }}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

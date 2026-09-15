@@ -287,7 +287,7 @@ export const mockAirQuality: AirQualityLatestResponse = {
   stations: [
     {
       station_id: 1,
-      station_name: "Stasiun Pekanbaru",
+      station_name: "Stasiun Pekanbaru - Tampan",
       external_id: "openaq-pek-001",
       distance_km: 0,
       observations: [
@@ -306,20 +306,142 @@ export const mockAirQuality: AirQualityLatestResponse = {
           age_seconds: 21600,
         },
       ],
-      category: null, // Phase 6
+      category: null,
     },
     {
       station_id: 2,
-      station_name: "Stasiun Dumai",
-      external_id: "openaq-dum-002",
+      station_name: "Stasiun Pekanbaru - Sukajadi",
+      external_id: "openaq-pek-002",
+      distance_km: 4.2,
+      observations: [
+        {
+          pollutant: "pm25",
+          value: 41.2,
+          unit: "ug/m3",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+        {
+          pollutant: "pm10",
+          value: 56.4,
+          unit: "ug/m3",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+      ],
+      category: null,
+    },
+    {
+      station_id: 3,
+      station_name: "Stasiun Dumai - Pelintung",
+      external_id: "openaq-dum-001",
       distance_km: 120.3,
       observations: [
         {
           pollutant: "pm25",
           value: 55.2,
           unit: "ug/m3",
-          observed_at: SIX_HOURS_AGO,
-          age_seconds: 21600,
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+        {
+          pollutant: "pm10",
+          value: 71.0,
+          unit: "ug/m3",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+      ],
+      category: null,
+    },
+    {
+      station_id: 4,
+      station_name: "Stasiun Duri / Mandau - Bengkalis",
+      external_id: "openaq-bks-001",
+      distance_km: 95.8,
+      observations: [
+        {
+          pollutant: "pm25",
+          value: 62.8,
+          unit: "ug/m3",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+        {
+          pollutant: "pm10",
+          value: 84.5,
+          unit: "ug/m3",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+      ],
+      category: null,
+    },
+    {
+      station_id: 5,
+      station_name: "Stasiun Siak Sri Indrapura",
+      external_id: "openaq-siak-001",
+      distance_km: 68.4,
+      observations: [
+        {
+          pollutant: "pm25",
+          value: 28.4,
+          unit: "ug/m3",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+        {
+          pollutant: "pm10",
+          value: 41.2,
+          unit: "ug/m3",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+      ],
+      category: null,
+    },
+    {
+      station_id: 6,
+      station_name: "Stasiun Kampar - Bangkinang",
+      external_id: "openaq-kmp-001",
+      distance_km: 54.1,
+      observations: [
+        {
+          pollutant: "pm25",
+          value: 24.1,
+          unit: "ug/m3",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+        {
+          pollutant: "pm10",
+          value: 36.8,
+          unit: "ug/m3",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+      ],
+      category: null,
+    },
+    {
+      station_id: 7,
+      station_name: "Stasiun Pelalawan - Pangkalan Kerinci",
+      external_id: "openaq-plw-001",
+      distance_km: 72.0,
+      observations: [
+        {
+          pollutant: "pm25",
+          value: 68.9,
+          unit: "ug/m3",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+        {
+          pollutant: "pm10",
+          value: 92.4,
+          unit: "ug/m3",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
         },
       ],
       category: null,
@@ -439,34 +561,53 @@ export const mockRisk: RiskCurrentResponse = {
 };
 
 // ---------------------------------------------------------------------------
-// Air Quality History (24h of PM2.5 data for chart)
+// Air Quality History (Dynamic 24h per station and pollutant for chart)
 // ---------------------------------------------------------------------------
 
-function generateAQHistory(hours: number): { observed_at: string; value: number; unit: string }[] {
+const STATION_BASE_PM25: Record<number, number> = {
+  1: 38.5, // Pekanbaru Tampan
+  2: 41.2, // Pekanbaru Sukajadi
+  3: 55.2, // Dumai Pelintung
+  4: 62.8, // Duri / Mandau
+  5: 28.4, // Siak Sri Indrapura
+  6: 24.1, // Kampar Bangkinang
+  7: 68.9, // Pelalawan
+};
+
+export function getMockAirQualityHistory(
+  stationId: number,
+  pollutant: string = "pm25",
+  hours: number = 24,
+): AirQualityHistoryResponse {
   const now = Date.now();
+  const base = STATION_BASE_PM25[stationId] ?? 35.0;
+  const multiplier = pollutant === "pm10" ? 1.35 : 1.0;
   const points: { observed_at: string; value: number; unit: string }[] = [];
-  // Simulate realistic PM2.5 fluctuations in Riau: baseline ~35, spikes up to 80+
-  const baseValues = [32, 35, 38, 42, 45, 48, 52, 55, 60, 55, 50, 48, 45, 42, 40, 38, 35, 33, 35, 38, 42, 45, 40, 37];
+
   for (let i = 0; i < hours; i++) {
     const t = new Date(now - (hours - 1 - i) * 3600_000);
-    const base = baseValues[i % baseValues.length];
-    // Add small random variation
-    const jitter = Math.sin(i * 0.7) * 5;
+    const hourOfDay = t.getHours();
+    // Diurnal traffic / weather curve: higher in morning (7-9) and evening (18-21)
+    const diurnal = Math.sin(((hourOfDay - 6) * Math.PI) / 12) * 6;
+    const jitter = Math.sin((i + stationId) * 0.9) * 4;
+    const val = Math.max(5, (base + diurnal + jitter) * multiplier);
+
     points.push({
       observed_at: t.toISOString(),
-      value: Math.round((base + jitter) * 10) / 10,
+      value: Math.round(val * 10) / 10,
       unit: "ug/m3",
     });
   }
-  return points;
+
+  return {
+    station_id: stationId,
+    pollutant,
+    unit: "ug/m3",
+    points,
+  };
 }
 
-export const mockAirQualityHistory: AirQualityHistoryResponse = {
-  station_id: 1,
-  pollutant: "pm25",
-  unit: "ug/m3",
-  points: generateAQHistory(24),
-};
+export const mockAirQualityHistory: AirQualityHistoryResponse = getMockAirQualityHistory(1, "pm25", 24);
 
 // ---------------------------------------------------------------------------
 // Weather Forecast (24h hourly)

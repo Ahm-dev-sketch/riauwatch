@@ -73,7 +73,11 @@ function mockLookup<T>(
   if (path === "/hotspots") return mocks.filterMockHotspots(params) as T;
   if (path === "/hotspots/summary") return mocks.summarizeMockHotspots(params) as T;
   if (path.startsWith("/air-quality/latest")) return mocks.mockAirQuality as T;
-  if (path.startsWith("/air-quality/history")) return mocks.mockAirQualityHistory as T;
+  if (path.startsWith("/air-quality/history")) {
+    const stationId = params.station_id ? Number(params.station_id) : 1;
+    const pollutant = params.pollutant || "pm25";
+    return mocks.getMockAirQualityHistory(stationId, pollutant) as T;
+  }
   if (path.startsWith("/weather/current")) return mocks.mockWeather as T;
   if (path.startsWith("/weather/forecast")) return mocks.mockWeatherForecast as T;
   if (path.startsWith("/risk/current")) return mocks.mockRisk as T;
