@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 from geoalchemy2 import WKTElement
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -64,11 +64,16 @@ class OpenMeteoRunner(IngestionRunner):
         # Get all kabupaten_kota areas with centroids
         with self._get_session() as session:
             areas = session.execute(
-                select(AdministrativeArea).where(
+                select(
+                    AdministrativeArea.id,
+                    AdministrativeArea.name,
+                    func.ST_X(AdministrativeArea.centroid).label("lon"),
+                    func.ST_Y(AdministrativeArea.centroid).label("lat"),
+                ).where(
                     AdministrativeArea.level == "kabupaten_kota",
                     AdministrativeArea.centroid.is_not(None),
                 )
-            ).scalars().all()
+            ).all()
 
         if not areas:
             return []
@@ -86,18 +91,8 @@ class OpenMeteoRunner(IngestionRunner):
 
         all_records = []
         for area in areas:
-            # Extract centroid coordinates
-            # centroid is a WKTElement, we need to parse it
-            # For now, we'll use a simple approach - the centroid should be a POINT
-            centroid_wkt = str(area.centroid)
-            # Parse POINT(lon lat) format
-            try:
-                coords = centroid_wkt.replace("POINT(", "").replace(")", "").split()
-                lon = float(coords[0])
-                lat = float(coords[1])
-            except (ValueError, IndexError):
-                # Skip areas with invalid centroids
-                continue
+            lat = float(area.lat)
+            lon = float(area.lon)
 
             url = OPEN_METEO_URL
             params: dict[str, str | int | float] = {

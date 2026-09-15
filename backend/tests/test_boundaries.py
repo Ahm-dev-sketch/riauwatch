@@ -220,10 +220,10 @@ class TestBoundariesGeometryConversion:
             ]],
         }
         wkt = runner._geometry_to_wkt(geometry)
-        assert wkt.startswith("POLYGON((")
+        assert wkt.startswith("MULTIPOLYGON(((")
         assert "101.3 0.4" in wkt
         assert "101.5 0.4" in wkt
-        assert wkt.endswith("))")
+        assert wkt.endswith(")))")
 
     def test_multipolygon_to_wkt(self):
         runner = BoundariesRunner("dummy.geojson")

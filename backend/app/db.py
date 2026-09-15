@@ -18,6 +18,7 @@ def get_engine():
             pool_pre_ping=True,
             pool_size=5,
             max_overflow=10,
+            connect_args={"prepare_threshold": None},  # Required for Supabase PgBouncer pooler compatibility
         )
     return _engine
 

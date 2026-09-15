@@ -111,22 +111,22 @@ class BoundariesRunner(IngestionRunner):
         }
 
     def _geometry_to_wkt(self, geometry: dict) -> str:
-        """Convert GeoJSON geometry to WKT."""
+        """Convert GeoJSON geometry to MultiPolygon WKT to match PostGIS column type."""
         geom_type = geometry.get("type")
         coords = geometry.get("coordinates", [])
 
         if geom_type == "Polygon":
             rings = []
             for ring in coords:
-                points = " ".join(f"{lon} {lat}" for lon, lat in ring)
+                points = ", ".join(f"{lon} {lat}" for lon, lat in ring)
                 rings.append(f"({points})")
-            return f"POLYGON({','.join(rings)})"
+            return f"MULTIPOLYGON(({','.join(rings)}))"
         elif geom_type == "MultiPolygon":
             polygons = []
             for polygon in coords:
                 rings = []
                 for ring in polygon:
-                    points = " ".join(f"{lon} {lat}" for lon, lat in ring)
+                    points = ", ".join(f"{lon} {lat}" for lon, lat in ring)
                     rings.append(f"({points})")
                 polygons.append(f"({','.join(rings)})")
             return f"MULTIPOLYGON({','.join(polygons)})"
@@ -181,7 +181,7 @@ class BoundariesRunner(IngestionRunner):
                 name="Riau",
                 level="provinsi",
                 parent_id=None,
-                geom=WKTElement("POLYGON EMPTY", srid=4326),  # Placeholder
+                geom=WKTElement("MULTIPOLYGON EMPTY", srid=4326),  # Placeholder
                 centroid=None,
                 properties={},
                 source_id=self.source_id,

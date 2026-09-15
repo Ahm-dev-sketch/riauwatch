@@ -1,5 +1,6 @@
 """Application settings using pydantic-settings."""
 
+import json
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,11 +37,26 @@ class Settings(BaseSettings):
     # OpenAQ settings
     openaq_bbox: str = "99.5,-2.0,103.0,2.5"
 
-    # API settings
-    frontend_origins: list[str] = ["http://localhost:3000"]
+    # API settings (accepts comma-separated string or list)
+    frontend_origins: str | list[str] = "http://localhost:3000"
     rate_limit_per_minute: int = 60
     degraded_after_consecutive_failures: int = 3
     running_stale_timeout_minutes: int = 240  # 2x expected cadence (2h * 2 = 4h)
+
+    def get_frontend_origins(self) -> list[str]:
+        val = self.frontend_origins
+        if isinstance(val, list):
+            return val
+        if isinstance(val, str):
+            if val.startswith("[") and val.endswith("]"):
+                try:
+                    parsed = json.loads(val)
+                    if isinstance(parsed, list):
+                        return [str(x) for x in parsed]
+                except Exception:
+                    pass
+            return [x.strip() for x in val.split(",") if x.strip()]
+        return ["http://localhost:3000"]
 
 
 settings = Settings()  # type: ignore[call-arg]
