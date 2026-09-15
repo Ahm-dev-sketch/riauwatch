@@ -2,8 +2,11 @@
 
 import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from app.ingest.open_meteo import OpenMeteoRunner, classify_is_forecast
+
+FIXTURE_PATH = Path(__file__).parent / "fixtures" / "open_meteo" / "pekanbaru_forecast.json"
 
 
 class TestClassifyIsForecast:
@@ -60,8 +63,7 @@ class TestOpenMeteoResponseParsing:
 
     def test_parse_real_fixture(self):
         """Parse the real pekanbaru_forecast.json fixture."""
-        fixture_path = "../tests/fixtures/open_meteo/pekanbaru_forecast.json"
-        with open(fixture_path, encoding="utf-8") as f:
+        with open(FIXTURE_PATH, encoding="utf-8") as f:
             data = json.load(f)
 
         # Verify structure
@@ -81,8 +83,7 @@ class TestOpenMeteoResponseParsing:
 
     def test_time_format_iso8601(self):
         """Verify time strings are ISO8601 format."""
-        fixture_path = "../tests/fixtures/open_meteo/pekanbaru_forecast.json"
-        with open(fixture_path, encoding="utf-8") as f:
+        with open(FIXTURE_PATH, encoding="utf-8") as f:
             data = json.load(f)
 
         for time_str in data["hourly"]["time"][:5]:  # Check first 5
@@ -92,8 +93,7 @@ class TestOpenMeteoResponseParsing:
 
     def test_units_match_expectations(self):
         """Verify hourly_units match expected units."""
-        fixture_path = "../tests/fixtures/open_meteo/pekanbaru_forecast.json"
-        with open(fixture_path, encoding="utf-8") as f:
+        with open(FIXTURE_PATH, encoding="utf-8") as f:
             data = json.load(f)
 
         units = data["hourly_units"]
