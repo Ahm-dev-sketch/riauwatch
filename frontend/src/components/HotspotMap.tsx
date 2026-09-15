@@ -3,18 +3,42 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { useRouter } from "next/navigation";
-import type { Map, MapLayerMouseEvent, GeoJSONSource } from "maplibre-gl";
+import type { Map, MapLayerMouseEvent, GeoJSONSource, StyleSpecification } from "maplibre-gl";
 import type { HotspotsResponse, AdminAreasResponse } from "@/lib/types";
 
 // Riau province bounding box (approximate center of the province)
 const RIAU_CENTER: [number, number] = [101.5, 0.5];
 const RIAU_ZOOM = 7;
 
-// OpenFreeMap tiles — MIT licensed, free for non-commercial use, no API key required.
-// Attribution is automatic with MapLibre GL (MapLibre adds the © OpenMapTiles and
-// © OpenStreetMap attribution in the map controls). See: https://openfreemap.org
-// Style "positron" chosen for a clean, readable basemap that lets data layers stand out.
-const TILE_STYLE = "https://tiles.openfreemap.org/styles/positron";
+// OpenFreeMap vector tiles (primary)
+const PRIMARY_TILE_STYLE = "https://tiles.openfreemap.org/styles/positron";
+
+// Global CARTO & OSM raster tiles fallback (works 100% across all ISPs, adblockers, and offline proxies)
+const FALLBACK_RASTER_STYLE = {
+  version: 8 as const,
+  sources: {
+    "osm-carto-raster": {
+      type: "raster" as const,
+      tiles: [
+        "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      ],
+      tileSize: 256,
+      attribution: "© OpenStreetMap contributors, © CARTO",
+    },
+  },
+  layers: [
+    {
+      id: "osm-carto-raster-layer",
+      type: "raster" as const,
+      source: "osm-carto-raster",
+      minzoom: 0,
+      maxzoom: 19,
+    },
+  ],
+};
 
 // Slug mapping for kabupaten → URL path
 const NAME_TO_SLUG: Record<string, string> = {
@@ -155,7 +179,11 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         if (!map) return;
         reportTileStatus(false);
         tileErrorCountRef.current = 0;
-        map.setStyle(TILE_STYLE);
+        try {
+          map.setStyle(PRIMARY_TILE_STYLE);
+        } catch {
+          map.setStyle(FALLBACK_RASTER_STYLE as unknown as StyleSpecification);
+        }
       },
     }), [onHotspotClick, reportTileStatus]);
 
@@ -164,54 +192,54 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
       if (!mapContainer.current || mapRef.current) return;
 
       let cancelled = false;
-
-      // Network-level probe: check if tile style is reachable.
-      // This catches failures that MapLibre's error event may not surface
-      // (e.g. aborted requests, CORS blocks, proxy denials).
-      fetch(TILE_STYLE, { method: "HEAD", mode: "no-cors" })
-        .catch(() => {
-          if (!cancelled) reportTileStatus(true);
-        });
+      let resizeObserver: ResizeObserver | null = null;
 
       import("maplibre-gl").then((maplibregl) => {
         if (cancelled || !mapContainer.current) return;
 
+        let hasFallenBack = false;
+
         const map = new maplibregl.Map({
           container: mapContainer.current,
-          style: TILE_STYLE,
+          style: PRIMARY_TILE_STYLE,
           center: RIAU_CENTER,
           zoom: RIAU_ZOOM,
-          minZoom: 5,
-          maxZoom: 16,
+          minZoom: 4,
+          maxZoom: 18,
         });
 
         map.addControl(new maplibregl.NavigationControl(), "top-right");
         map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
 
-        // Track tile errors for graceful degradation.
-        // MapLibre fires "error" for tile load failures; we debounce so
-        // transient network blips don't immediately show the fallback.
-        let tileErrorTimer: ReturnType<typeof setTimeout> | null = null;
+        // ResizeObserver to ensure MapLibre adjusts whenever container sizes or flex settles
+        if (typeof ResizeObserver !== "undefined" && mapContainer.current) {
+          resizeObserver = new ResizeObserver(() => {
+            map.resize();
+          });
+          resizeObserver.observe(mapContainer.current);
+        }
+
+        // Track tile errors and fallback to reliable CARTO/OSM raster tiles if vector style fails
         map.on("error", (e) => {
-          // Only react to tile-related errors (status codes, type "Tile")
           const err = e.error as { status?: number; message?: string } | undefined;
           const isTileError =
             (err?.status != null && err.status >= 400) ||
-            (err?.message?.toLowerCase().includes("tile") ?? false);
+            (err?.message?.toLowerCase().includes("tile") ?? false) ||
+            (err?.message?.toLowerCase().includes("style") ?? false) ||
+            (err?.message?.toLowerCase().includes("failed") ?? false);
 
           if (isTileError) {
             tileErrorCountRef.current += 1;
-            // After 3+ tile errors, report as failed
-            if (tileErrorCountRef.current >= 3 && !cancelled) {
-              reportTileStatus(true);
-            } else if (!tileErrorTimer && !cancelled) {
-              // Debounce: wait 2s for errors to settle
-              tileErrorTimer = setTimeout(() => {
-                if (tileErrorCountRef.current >= 2 && !cancelled) {
-                  reportTileStatus(true);
-                }
-                tileErrorTimer = null;
-              }, 2000);
+            reportTileStatus(true);
+
+            if (!hasFallenBack) {
+              hasFallenBack = true;
+              console.warn("Primary vector tiles unavailable; falling back to OSM/CARTO raster basemap.");
+              try {
+                map.setStyle(FALLBACK_RASTER_STYLE as unknown as StyleSpecification);
+              } catch (fallbackErr) {
+                console.error("Fallback style error:", fallbackErr);
+              }
             }
           }
         });
@@ -220,8 +248,7 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
           if (cancelled) return;
           setMapLoaded(true);
           mapRef.current = map;
-          // Report success (tiles loaded fine)
-          reportTileStatus(false);
+          map.resize();
           tileErrorCountRef.current = 0;
           // E2E hook (mock mode only): let Playwright project coordinates to pixels.
           if (process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
@@ -232,6 +259,9 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
 
       return () => {
         cancelled = true;
+        if (resizeObserver) {
+          resizeObserver.disconnect();
+        }
         mapRef.current?.remove();
         mapRef.current = null;
       };
