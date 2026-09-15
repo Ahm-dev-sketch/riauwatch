@@ -20,7 +20,7 @@ export function Legend({ visibleLayers, onToggle }: LegendProps) {
             type="checkbox"
             checked={visibleLayers.hotspots}
             onChange={() => onToggle("hotspots")}
-            className="h-4 w-4 rounded border-rw-gray-300 text-rw-green-600 focus:ring-rw-green-600"
+            className="h-4 w-4 rounded border-rw-gray-300 text-rw-green-600 focus-visible:ring-2 focus-visible:ring-rw-green-600 focus-visible:ring-offset-2"
           />
           <span className="text-sm text-rw-gray-700 group-hover:text-rw-gray-900">Titik Panas</span>
         </label>
@@ -29,7 +29,7 @@ export function Legend({ visibleLayers, onToggle }: LegendProps) {
             type="checkbox"
             checked={visibleLayers.boundaries}
             onChange={() => onToggle("boundaries")}
-            className="h-4 w-4 rounded border-rw-gray-300 text-rw-green-600 focus:ring-rw-green-600"
+            className="h-4 w-4 rounded border-rw-gray-300 text-rw-green-600 focus-visible:ring-2 focus-visible:ring-rw-green-600 focus-visible:ring-offset-2"
           />
           <span className="text-sm text-rw-gray-700 group-hover:text-rw-gray-900">Batas Wilayah</span>
         </label>

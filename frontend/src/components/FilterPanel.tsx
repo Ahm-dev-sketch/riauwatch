@@ -101,7 +101,7 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => update("dateFrom", e.target.value)}
-                className="w-full rounded-lg border border-rw-gray-200 px-2.5 py-1.5 text-sm text-rw-gray-800 focus:border-rw-green-600 focus:ring-1 focus:ring-rw-green-600 outline-none"
+                className="w-full rounded-lg border border-rw-gray-200 px-2.5 py-1.5 text-sm text-rw-gray-800 focus:border-rw-green-600 focus-visible:ring-2 focus-visible:ring-rw-green-600 focus-visible:ring-offset-1 outline-none"
               />
             </div>
             <div>
@@ -113,7 +113,7 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => update("dateTo", e.target.value)}
-                className="w-full rounded-lg border border-rw-gray-200 px-2.5 py-1.5 text-sm text-rw-gray-800 focus:border-rw-green-600 focus:ring-1 focus:ring-rw-green-600 outline-none"
+                className="w-full rounded-lg border border-rw-gray-200 px-2.5 py-1.5 text-sm text-rw-gray-800 focus:border-rw-green-600 focus-visible:ring-2 focus-visible:ring-rw-green-600 focus-visible:ring-offset-1 outline-none"
               />
             </div>
           </div>
@@ -127,7 +127,7 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
               id="kabupaten"
               value={filters.kabupatenId}
               onChange={(e) => update("kabupatenId", e.target.value)}
-              className="w-full rounded-lg border border-rw-gray-200 px-2.5 py-1.5 text-sm text-rw-gray-800 focus:border-rw-green-600 focus:ring-1 focus:ring-rw-green-600 outline-none"
+              className="w-full rounded-lg border border-rw-gray-200 px-2.5 py-1.5 text-sm text-rw-gray-800 focus:border-rw-green-600 focus-visible:ring-2 focus-visible:ring-rw-green-600 focus-visible:ring-offset-1 outline-none"
             >
               {KABUPATEN_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -146,7 +146,7 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
               id="confidence"
               value={filters.minConfidence}
               onChange={(e) => update("minConfidence", e.target.value)}
-              className="w-full rounded-lg border border-rw-gray-200 px-2.5 py-1.5 text-sm text-rw-gray-800 focus:border-rw-green-600 focus:ring-1 focus:ring-rw-green-600 outline-none"
+              className="w-full rounded-lg border border-rw-gray-200 px-2.5 py-1.5 text-sm text-rw-gray-800 focus:border-rw-green-600 focus-visible:ring-2 focus-visible:ring-rw-green-600 focus-visible:ring-offset-1 outline-none"
             >
               {CONFIDENCE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
