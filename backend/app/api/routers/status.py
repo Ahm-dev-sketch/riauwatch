@@ -37,16 +37,23 @@ DOMAIN_OBSERVATION_SQL = {
     ),
 }
 
+# Log rows tagged params {"job": "risk-recompute"} are compute bookkeeping, not
+# ingestion runs: exclude them so compute health can never flip ingestion freshness.
+_INGESTION_ONLY = (
+    "AND (l.params IS NULL OR l.params->>'job' IS NULL "
+    "OR l.params->>'job' <> 'risk-recompute')"
+)
+
 _RECENT_RUNS_SQL = (
     "SELECT s.key AS source_key, l.status AS status, l.started_at AS started_at "
     "FROM data_ingestion_logs l JOIN data_sources s ON s.id = l.source_id "
-    "WHERE s.key LIKE :pat ORDER BY l.started_at DESC LIMIT 200"
+    "WHERE s.key LIKE :pat " + _INGESTION_ONLY + " ORDER BY l.started_at DESC LIMIT 200"
 )
 
 _LAST_SUCCESS_SQL = (
     "SELECT MAX(l.finished_at) AS last_ok FROM data_ingestion_logs l "
     "JOIN data_sources s ON s.id = l.source_id "
-    "WHERE s.key LIKE :pat AND l.status = 'success'"
+    "WHERE s.key LIKE :pat AND l.status = 'success' " + _INGESTION_ONLY
 )
 
 

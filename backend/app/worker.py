@@ -5,6 +5,7 @@ import logging
 import sys
 
 from app.ingest import run_boundaries_load, run_firms_hotspots, run_open_meteo, run_openaq
+from app.risk.recompute import run_risk_recompute
 from app.settings import settings
 
 # Configure structured JSON logging
@@ -43,6 +44,9 @@ def main() -> int:
     boundaries_parser.add_argument(
         "--file", type=str, required=True, help="Path to GeoJSON file"
     )
+
+    # risk-recompute subcommand
+    _ = subparsers.add_parser("risk-recompute", help="Recompute rule-based fire risk")
 
     args = parser.parse_args()
 
@@ -84,6 +88,16 @@ def main() -> int:
             return 0
         except Exception as e:
             logger.exception("Boundaries load failed: %s", e)
+            return 1
+
+    elif args.command == "risk-recompute":
+        logger.info("Starting risk recompute")
+        try:
+            summary = run_risk_recompute()
+            logger.info("Risk recompute completed: %s", summary)
+            return 0
+        except Exception as e:
+            logger.exception("Risk recompute failed: %s", e)
             return 1
 
     return 0
