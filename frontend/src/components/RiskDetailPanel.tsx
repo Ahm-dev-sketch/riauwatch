@@ -69,8 +69,72 @@ function getRiskVisual(level: string | null) {
 }
 
 // ---------------------------------------------------------------------------
-// Factor display — renders factors[] VERBATIM from API
+// Humanize technical factor names & values into plain, friendly Indonesian
 // ---------------------------------------------------------------------------
+
+const FACTOR_NAME_MAP: Record<string, string> = {
+  hotspot_count_7d: "Titik Panas (7 Hari Terakhir)",
+  recent_trend: "Kecenderungan Titik Panas",
+  dry_spell_days: "Hari Tanpa Hujan",
+  vegetation_condition: "Kondisi Lahan & Vegetasi",
+  hotspot_density_48h: "Kerapatan Titik Panas (48 Jam)",
+  rainfall_7d: "Curah Hujan (7 Hari Terakhir)",
+  humidity_24h: "Kelembapan Udara Rata-rata",
+  humidity_avg_pct: "Kelembapan Udara Rata-rata",
+  temperature_24h_max: "Suhu Udara Tertinggi",
+  wind_speed_24h: "Kecepatan Angin",
+  wind_speed_avg_kmh: "Kecepatan Angin",
+};
+
+const FACTOR_VALUE_MAP: Record<string, string> = {
+  increasing: "Meningkat ↗ (Waspada)",
+  decreasing: "Menurun ↘ (Membaik)",
+  stable: "Stabil → (Tetap)",
+  stressed: "Kering & Mudah Terbakar",
+  moderate: "Cukup Lembap",
+  good: "Lembap & Aman",
+};
+
+function humanizeName(rawKey: string): string {
+  if (FACTOR_NAME_MAP[rawKey]) return FACTOR_NAME_MAP[rawKey];
+  return rawKey
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function humanizeValue(rawKey: string, rawVal: string | number): string {
+  const str = String(rawVal).toLowerCase();
+  if (FACTOR_VALUE_MAP[str]) return FACTOR_VALUE_MAP[str];
+
+  if (rawKey === "hotspot_count_7d" || rawKey === "hotspot_density_48h") {
+    return `${rawVal} titik terdeteksi`;
+  }
+  if (rawKey === "dry_spell_days") {
+    return `${rawVal} hari berturut-turut`;
+  }
+  if (rawKey === "rainfall_7d") {
+    return `${rawVal} mm`;
+  }
+  if (rawKey.includes("humidity")) {
+    return `${rawVal}%`;
+  }
+  if (rawKey.includes("temp")) {
+    return `${rawVal}°C`;
+  }
+  if (rawKey.includes("wind")) {
+    return `${rawVal} km/jam`;
+  }
+
+  return String(rawVal);
+}
+
+function humanizeHorizon(horizon: string): string {
+  if (horizon === "48h") return "Prakiraan 2 Hari ke Depan (48 Jam)";
+  if (horizon === "24h") return "Prakiraan 24 Jam ke Depan";
+  if (horizon === "72h") return "Prakiraan 3 Hari ke Depan";
+  if (horizon === "current") return "Kondisi Terkini";
+  return `Prakiraan: ${horizon}`;
+}
 
 interface RiskFactor {
   name: string;
@@ -79,7 +143,6 @@ interface RiskFactor {
 }
 
 function parseFactors(factors: Record<string, unknown>): RiskFactor[] {
-  // Handle both array format and object format
   if (Array.isArray(factors)) {
     return factors.map((f) => ({
       name: String((f as Record<string, unknown>).name ?? ""),
@@ -87,7 +150,6 @@ function parseFactors(factors: Record<string, unknown>): RiskFactor[] {
       reason: String((f as Record<string, unknown>).reason ?? ""),
     }));
   }
-  // Convert object format to array
   return Object.entries(factors).map(([key, val]) => ({
     name: key,
     value: val as string | number,
@@ -100,27 +162,39 @@ function RiskFactors({ factors }: { factors: Record<string, unknown> }) {
   if (parsed.length === 0) return null;
 
   return (
-    <div className="mt-3 space-y-2">
-      <h4 className="text-xs font-semibold text-rw-gray-700 uppercase tracking-wide">
-        Faktor Penilaian
+    <div className="mt-4 space-y-2">
+      <h4 className="text-xs font-semibold text-rw-smoke-700 uppercase tracking-wide">
+        Faktor Penyebab Risiko
       </h4>
-      <div className="space-y-1.5">
-        {parsed.map((f, i) => (
-          <div
-            key={i}
-            className="flex items-start gap-2 rounded-lg bg-rw-gray-50 px-3 py-2 border border-rw-gray-100"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-rw-gray-800">{f.name}</span>
-                <span className="rw-readout text-xs font-medium text-rw-smoke-600">{String(f.value)}</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {parsed.map((f, i) => {
+          const friendlyName = humanizeName(f.name);
+          const friendlyValue = humanizeValue(f.name, f.value);
+          const isReasonDifferent =
+            f.reason &&
+            f.reason !== String(f.value) &&
+            f.reason !== f.name &&
+            !f.reason.includes(f.name);
+
+          return (
+            <div
+              key={i}
+              className="flex flex-col justify-between rounded-lg bg-rw-smoke-50 px-3 py-2.5 border border-rw-smoke-200/70"
+            >
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-xs font-medium text-rw-smoke-700">{friendlyName}</span>
               </div>
-              {f.reason !== String(f.value) && (
-                <p className="text-[11px] text-rw-gray-500 mt-0.5">{f.reason}</p>
+              <div className="flex items-center justify-between gap-2">
+                <span className="rw-readout text-xs font-semibold text-rw-peat-900 bg-white px-2 py-0.5 rounded border border-rw-smoke-200">
+                  {friendlyValue}
+                </span>
+              </div>
+              {isReasonDifferent && (
+                <p className="text-[11px] text-rw-smoke-500 mt-1 leading-snug">{f.reason}</p>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -134,13 +208,30 @@ function RiskCard({ assessment }: { assessment: RiskAssessment }) {
   const visual = getRiskVisual(assessment.risk_level);
 
   return (
-    <div className={`rw-instrument-panel rounded-xl border ${assessment.risk_level === "HIGH" ? "border-rw-red-200" : assessment.risk_level === "MEDIUM" ? "border-rw-orange-200" : "border-rw-smoke-200"} bg-white p-5 shadow-sm`} style={{ borderLeftColor: assessment.risk_level === "HIGH" ? "var(--rw-red-600)" : assessment.risk_level === "MEDIUM" ? "var(--rw-orange-600)" : "var(--rw-mangrove-600)" }}>
+    <div
+      className={`rw-instrument-panel rounded-xl border ${
+        assessment.risk_level === "HIGH"
+          ? "border-rw-red-200"
+          : assessment.risk_level === "MEDIUM"
+            ? "border-rw-orange-200"
+            : "border-rw-smoke-200"
+      } bg-white p-5 shadow-sm`}
+      style={{
+        borderLeftColor:
+          assessment.risk_level === "HIGH"
+            ? "var(--rw-red-600)"
+            : assessment.risk_level === "MEDIUM"
+              ? "var(--rw-orange-600)"
+              : "var(--rw-mangrove-600)",
+      }}
+    >
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-rw-gray-900">{assessment.area_name}</h3>
-          <p className="text-xs text-rw-gray-500 mt-0.5">
-            Horison: {assessment.horizon} · {new Date(assessment.assessed_for).toLocaleString("id-ID", {
+          <h3 className="text-base font-bold text-rw-peat-900">{assessment.area_name}</h3>
+          <p className="text-xs text-rw-smoke-500 mt-0.5">
+            {humanizeHorizon(assessment.horizon)} ·{" "}
+            {new Date(assessment.assessed_for).toLocaleString("id-ID", {
               day: "numeric",
               month: "short",
               year: "numeric",
@@ -157,41 +248,40 @@ function RiskCard({ assessment }: { assessment: RiskAssessment }) {
 
       {/* Score bar */}
       {assessment.score != null && (
-        <div className="mt-3">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-rw-gray-500">Skor Risiko</span>
-            <span className="rw-readout text-xs font-semibold text-rw-smoke-700">
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-rw-smoke-600">Tingkat Potensi Kebakaran</span>
+            <span className="rw-readout text-xs font-bold text-rw-peat-900">
               {Math.round(assessment.score * 100)}%
             </span>
           </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-rw-gray-100">
+          <div className="h-2.5 overflow-hidden rounded-full bg-rw-smoke-100">
             <div
               className={`h-full rounded-full transition-all ${
                 assessment.risk_level === "HIGH"
                   ? "bg-rw-red-600"
                   : assessment.risk_level === "MEDIUM"
                     ? "bg-rw-orange-600"
-                    : "bg-rw-green-600"
+                    : "bg-rw-mangrove-600"
               }`}
               style={{ width: `${Math.round(assessment.score * 100)}%` }}
               role="progressbar"
               aria-valuenow={Math.round(assessment.score * 100)}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`Skor risiko: ${Math.round(assessment.score * 100)}%`}
+              aria-label={`Tingkat potensi kebakaran: ${Math.round(assessment.score * 100)}%`}
             />
           </div>
         </div>
       )}
 
-      {/* Factors — rendered VERBATIM from API */}
+      {/* Factors */}
       <RiskFactors factors={assessment.factors} />
 
-      {/* Model version footnote */}
-      <div className="mt-3 pt-2 border-t border-rw-gray-100">
-        <p className="text-[10px] text-rw-gray-400">
-          Model: {assessment.model_version} · Bobot awal, belum tervalidasi ilmiah.
-          Skor bersifat indikatif dan memerlukan validasi lapangan.
+      {/* Human-friendly note */}
+      <div className="mt-4 pt-2.5 border-t border-rw-smoke-100">
+        <p className="text-[11px] text-rw-smoke-500 leading-relaxed">
+          <strong className="text-rw-smoke-700">Peringatan Dini:</strong> Analisis dihitung otomatis dari data satelit dan pantauan cuaca untuk deteksi dini karhutla. Kondisi di lapangan tetap memerlukan verifikasi langsung.
         </p>
       </div>
     </div>
@@ -221,17 +311,19 @@ export function RiskDetailPanel({ kabupatenId }: { kabupatenId?: number }) {
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [kabupatenId]);
 
   if (loading) {
     return (
       <div className="space-y-3">
         {[1, 2].map((i) => (
-          <div key={i} className="animate-pulse rounded-xl border border-rw-gray-200 bg-white p-5">
-            <div className="h-5 bg-rw-gray-100 rounded w-1/3 mb-3" />
-            <div className="h-4 bg-rw-gray-100 rounded w-2/3 mb-2" />
-            <div className="h-3 bg-rw-gray-100 rounded w-1/2" />
+          <div key={i} className="animate-pulse rounded-xl border border-rw-smoke-200 bg-white p-5">
+            <div className="h-5 bg-rw-smoke-100 rounded w-1/3 mb-3" />
+            <div className="h-4 bg-rw-smoke-100 rounded w-2/3 mb-2" />
+            <div className="h-3 bg-rw-smoke-100 rounded w-1/2" />
           </div>
         ))}
       </div>
@@ -240,7 +332,7 @@ export function RiskDetailPanel({ kabupatenId }: { kabupatenId?: number }) {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-rw-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-2 text-rw-orange-600">
           <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
@@ -258,24 +350,24 @@ export function RiskDetailPanel({ kabupatenId }: { kabupatenId?: number }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-rw-gray-900 flex items-center gap-2">
-            <svg className="h-5 w-5 text-rw-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <h2 className="text-lg font-bold text-rw-peat-900 flex items-center gap-2 font-display">
+            <svg className="h-5 w-5 text-rw-sienna-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
-            Risiko Kebakaran
+            Penilaian Risiko Kebakaran Hutan & Lahan
           </h2>
           <MockBadge />
         </div>
-        <div className="rounded-xl border border-rw-gray-200 bg-white p-8 text-center shadow-sm">
-          <svg className="h-10 w-10 text-rw-gray-300 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+        <div className="rounded-xl border border-rw-smoke-200 bg-white p-8 text-center shadow-sm">
+          <svg className="h-10 w-10 text-rw-smoke-300 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
             <line x1="8" y1="12" x2="16" y2="12" />
           </svg>
-          <p className="text-sm font-medium text-rw-gray-700">
-            Data belum cukup untuk penilaian risiko
+          <p className="text-sm font-semibold text-rw-peat-900">
+            Data Belum Cukup untuk Penilaian Risiko
           </p>
-          <p className="text-xs text-rw-gray-500 mt-1">
-            Penilaian risiko akan tersedia setelah model selesai menghitung.
+          <p className="text-xs text-rw-smoke-500 mt-1">
+            Penilaian risiko otomatis akan ditampilkan setelah data pengamatan cuaca dan satelit terakumulasi secara lengkap.
           </p>
         </div>
       </div>
@@ -285,12 +377,17 @@ export function RiskDetailPanel({ kabupatenId }: { kabupatenId?: number }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-rw-gray-900 flex items-center gap-2">
-          <svg className="h-5 w-5 text-rw-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          </svg>
-          Risiko Kebakaran
-        </h2>
+        <div>
+          <h2 className="text-lg font-bold text-rw-peat-900 flex items-center gap-2 font-display">
+            <svg className="h-5 w-5 text-rw-sienna-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            Penilaian Risiko Kebakaran Hutan & Lahan
+          </h2>
+          <p className="text-xs text-rw-smoke-500 mt-0.5">
+            Tingkat kerawanan wilayah berdasarkan titik panas, kekeringan, dan kondisi cuaca
+          </p>
+        </div>
         <MockBadge />
       </div>
 

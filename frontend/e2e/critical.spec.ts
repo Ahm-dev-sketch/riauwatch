@@ -119,15 +119,15 @@ test("journey 5: filters change the hotspot list", async ({ page }) => {
   await expect(page.getByText("Kab. Kampar").first()).toBeVisible();
 });
 
-// (6) Risk panel shows level + factors.
+// (6) Risk panel shows level + factors in plain friendly Indonesian.
 test("journey 6: risk panel shows level and factors", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("tab", { name: "Risiko", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Risiko Kebakaran" }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Risiko Kebakaran/i }).first()).toBeVisible();
   await expect(page.getByText("Risiko Tinggi").first()).toBeVisible();
-  await expect(page.getByText("Skor Risiko").first()).toBeVisible();
-  await expect(page.getByText("Faktor Penilaian").first()).toBeVisible();
-  await expect(page.getByText("hotspot_count_7d").first()).toBeVisible();
+  await expect(page.getByText("Tingkat Potensi Kebakaran").first()).toBeVisible();
+  await expect(page.getByText("Faktor Penyebab Risiko").first()).toBeVisible();
+  await expect(page.getByText("Titik Panas (7 Hari Terakhir)").first()).toBeVisible();
 });
 
 // (7) AQ panel shows PM2.5 + ISPU category + timestamp.

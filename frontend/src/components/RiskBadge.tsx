@@ -93,9 +93,6 @@ export function RiskBadge({ assessment, compact = false }: RiskBadgeProps) {
           </div>
           <div>
             <span className="text-sm font-semibold text-rw-smoke-900">{assessment.area_name}</span>
-            {!compact && (
-              <span className="text-xs text-rw-smoke-500 ml-2">Model: {assessment.model_version}</span>
-            )}
           </div>
         </div>
         <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${visual.bgColor} ${visual.color}`}>
