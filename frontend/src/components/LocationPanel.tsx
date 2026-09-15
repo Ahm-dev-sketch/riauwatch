@@ -108,7 +108,7 @@ export function LocationPanel() {
           <button
             type="button"
             onClick={handleGeolocate}
-            className="inline-flex items-center gap-2 rounded-lg bg-rw-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-rw-green-600 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-rw-peat-900 px-4 py-2 text-sm font-medium text-white hover:bg-rw-peat-800 transition-colors"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <circle cx="12" cy="12" r="10" />
@@ -177,7 +177,7 @@ export function LocationPanel() {
           {/* Area info */}
           <div className="rounded-xl border border-rw-gray-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-2">
-              <svg className="h-4 w-4 text-rw-green-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <svg className="h-4 w-4 text-rw-sienna-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
                 <circle cx="12" cy="10" r="3" />
               </svg>
@@ -238,7 +238,7 @@ export function LocationPanel() {
               {risk.assessments.filter((a) => a.area_name === area.name).slice(0, 1).map((a) => (
                 <div key={a.area_id} className="flex items-center gap-2">
                   <span className={`text-sm font-medium ${
-                    a.risk_level === "HIGH" ? "text-rw-red-600" : a.risk_level === "MEDIUM" ? "text-rw-orange-600" : "text-rw-green-700"
+                    a.risk_level === "HIGH" ? "text-rw-red-600" : a.risk_level === "MEDIUM" ? "text-rw-orange-600" : "text-rw-mangrove-700"
                   }`}>
                     {a.risk_level === "HIGH" ? "Risiko Tinggi" : a.risk_level === "MEDIUM" ? "Risiko Sedang" : "Risiko Rendah"}
                   </span>

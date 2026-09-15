@@ -4,10 +4,10 @@
  */
 export function HotspotDisclaimer() {
   return (
-    <div className="rounded-lg border border-rw-amber-100 bg-rw-amber-100/40 p-3" role="note">
-      <p className="text-xs text-rw-gray-700 leading-relaxed">
+    <div className="rounded-lg border border-rw-haze-700/20 bg-rw-haze-50 p-3" role="note">
+      <p className="text-xs text-rw-smoke-700 leading-relaxed">
         <svg
-          className="inline-block h-3.5 w-3.5 mr-1 text-rw-amber-600 -mt-0.5"
+          className="inline-block h-3.5 w-3.5 mr-1 text-rw-haze-600 -mt-0.5"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

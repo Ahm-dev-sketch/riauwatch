@@ -11,7 +11,7 @@ const dmSans = DM_Sans({
 
 const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
-  weight: ["600", "700"],
+  weight: ["400", "600"],
   variable: "--font-source-serif",
   display: "swap",
 });
@@ -88,10 +88,10 @@ export default function RootLayout({
       className={`${dmSans.variable} ${sourceSerif.variable} ${jetbrainsMono.variable} h-full`}
     >
       <head>
-        <meta name="theme-color" content="#276749" />
+        <meta name="theme-color" content="#2c1e18" />
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className="min-h-full flex flex-col bg-rw-gray-50 text-rw-gray-900 font-sans antialiased">
+      <body className="min-h-full flex flex-col bg-rw-smoke-50 text-rw-smoke-900 font-sans antialiased">
         <a href="#main-content" className="skip-link">
           Langsung ke konten utama
         </a>

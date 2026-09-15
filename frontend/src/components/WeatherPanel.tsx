@@ -69,8 +69,8 @@ function WeatherStat({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-rw-gray-100 bg-rw-gray-50 p-3">
-      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-rw-green-700 shadow-sm">
+    <div className="flex items-center gap-3 rounded-lg border border-rw-smoke-100 bg-rw-smoke-50 p-3">
+      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-rw-sienna-600 shadow-sm">
         {icon}
       </div>
       <div>
@@ -258,9 +258,9 @@ export function WeatherPanel({ kabupatenId }: { kabupatenId?: number }) {
 
       {/* Stale warning */}
       {obs.age_seconds !== null && obs.age_seconds > 3 * 3600 && (
-        <div className="rounded-lg border border-rw-amber-100 bg-rw-amber-100/50 p-2">
-          <p className="text-xs text-rw-gray-700 flex items-center gap-1.5">
-            <svg className="h-3.5 w-3.5 text-rw-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <div className="rounded-lg border border-rw-haze-700/30 bg-rw-haze-50 p-2">
+          <p className="text-xs text-rw-smoke-700 flex items-center gap-1.5">
+            <svg className="h-3.5 w-3.5 text-rw-haze-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />

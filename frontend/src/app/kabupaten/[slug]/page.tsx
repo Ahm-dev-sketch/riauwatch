@@ -72,7 +72,7 @@ function KabupatenNotFound() {
             </p>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-lg bg-rw-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-rw-green-600 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg bg-rw-peat-900 px-4 py-2 text-sm font-medium text-white hover:bg-rw-peat-800 transition-colors"
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -142,42 +142,51 @@ export default function KabupatenPage() {
 
       <main id="main-content" className="flex-1">
         {/* Hero */}
-        <section className="bg-white border-b border-rw-gray-200">
+        <section className="bg-white border-b border-rw-smoke-200">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div className="flex items-center gap-3 mb-2">
               <Link
                 href="/"
-                className="text-rw-gray-400 hover:text-rw-gray-600 transition-colors"
+                className="text-rw-smoke-400 hover:text-rw-smoke-600 transition-colors"
                 aria-label="Kembali ke Beranda"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <path d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
               </Link>
-              <h1 className="text-2xl sm:text-3xl font-bold text-rw-green-900 tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-bold text-rw-peat-900 tracking-tight font-display">
                 {kabupatenName}
               </h1>
               <MockBadge />
             </div>
-            <p className="text-sm text-rw-gray-500">
+            <p className="text-sm text-rw-smoke-500">
               Data lingkungan dan risiko kebakaran untuk wilayah {kabupatenName}
             </p>
           </div>
         </section>
 
+        {/* Jerebu Strip */}
+        <div
+          className="rw-jerebu-strip h-2"
+          style={{
+            background: "linear-gradient(90deg, #8b4513 0%, #a0522d 40%, #cd853f 70%, #8b4513 100%)",
+          }}
+          aria-hidden="true"
+        />
+
         {/* Hotspot summary */}
         <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
-          <div className="rounded-xl border border-rw-gray-200 bg-white p-4 shadow-sm">
+          <div className="rw-instrument-panel rounded-xl border border-rw-smoke-200 bg-white p-4 shadow-sm" style={{ borderLeftColor: "var(--rw-haze-500)" }}>
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-semibold text-rw-gray-900">Titik Panas</h2>
-                <p className="text-xs text-rw-gray-500 mt-0.5">
+                <h2 className="text-sm font-semibold text-rw-smoke-900">Titik Panas</h2>
+                <p className="text-xs text-rw-smoke-500 mt-0.5">
                   {getTrendNote(hotspotCount)}
                 </p>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-rw-gray-900 font-mono">{hotspotCount}</span>
-                <span className="text-sm text-rw-gray-500">titik</span>
+                <span className="rw-readout text-3xl font-bold text-rw-smoke-900">{hotspotCount}</span>
+                <span className="text-sm text-rw-smoke-500">titik</span>
               </div>
             </div>
           </div>

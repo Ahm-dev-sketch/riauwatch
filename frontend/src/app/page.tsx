@@ -140,20 +140,20 @@ export default function HomePage() {
 
       <main id="main-content" className="flex-1">
         {/* Hero: Answer "Bagaimana kondisi Riau sekarang?" */}
-        <section className="bg-white border-b border-rw-gray-200">
+        <section className="bg-white border-b border-rw-smoke-200">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-rw-green-900 tracking-tight">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-rw-peat-900 tracking-tight font-display">
                     Bagaimana kondisi Riau sekarang?
                   </h1>
                   <MockBadge />
                 </div>
                 {generatedAt && (
-                  <p className="text-sm text-rw-gray-600">
+                  <p className="text-sm text-rw-smoke-600">
                     Data diperbarui:{" "}
-                    <time dateTime={generatedAt} className="font-medium text-rw-gray-800">
+                    <time dateTime={generatedAt} className="rw-readout font-medium text-rw-smoke-800">
                       {new Date(generatedAt).toLocaleString("id-ID", {
                         day: "numeric",
                         month: "long",
@@ -169,8 +169,19 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Jerebu Strip — atmospheric band reflecting current air quality */}
+        <section
+          className="rw-jerebu-strip h-2"
+          style={{
+            background: status?.air_quality?.degraded
+              ? "linear-gradient(90deg, #b45309 0%, #d97706 40%, #f59e0b 70%, #b45309 100%)"
+              : "linear-gradient(90deg, #276749 0%, #2d8659 40%, #38a169 70%, #276749 100%)",
+          }}
+          aria-hidden="true"
+        />
+
         {/* Tab navigation — proper tablist semantics */}
-        <section className="bg-white border-b border-rw-gray-200 sticky top-16 z-30">
+        <section className="bg-white border-b border-rw-smoke-200 sticky top-16 z-30">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div
               role="tablist"
@@ -209,10 +220,10 @@ export default function HomePage() {
                       setActiveTab(TAB_IDS[nextIdx]);
                       document.getElementById(`tab-${TAB_IDS[nextIdx]}`)?.focus();
                     }}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-rw-green-600 ${
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-rw-sienna-600 ${
                       isActive
-                        ? "border-rw-green-700 text-rw-green-800"
-                        : "border-transparent text-rw-gray-600 hover:text-rw-gray-800 hover:border-rw-gray-300"
+                        ? "border-rw-sienna-600 text-rw-peat-900"
+                        : "border-transparent text-rw-smoke-500 hover:text-rw-smoke-800 hover:border-rw-smoke-300"
                     }`}
                   >
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -396,10 +407,10 @@ export default function HomePage() {
         )}
 
         {/* Data freshness footer */}
-        <section className="bg-rw-gray-100 border-t border-rw-gray-200">
+        <section className="bg-rw-smoke-100 border-t border-rw-smoke-200">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-rw-gray-600">
-              <span className="font-medium text-rw-gray-700">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-rw-smoke-600">
+              <span className="font-medium text-rw-smoke-700">
                 Status data:
               </span>
               <div className="flex flex-wrap items-center gap-3">
@@ -407,7 +418,7 @@ export default function HomePage() {
                   {status?.hotspots?.degraded ? (
                     <span className="text-rw-orange-600" aria-hidden="true">⚠</span>
                   ) : (
-                    <span className="text-rw-green-700" aria-hidden="true">●</span>
+                    <span className="text-rw-mangrove-700" aria-hidden="true">●</span>
                   )}
                   Hotspots
                 </span>
@@ -415,7 +426,7 @@ export default function HomePage() {
                   {status?.air_quality?.degraded ? (
                     <span className="text-rw-orange-600" aria-hidden="true">⚠</span>
                   ) : (
-                    <span className="text-rw-green-700" aria-hidden="true">●</span>
+                    <span className="text-rw-mangrove-700" aria-hidden="true">●</span>
                   )}
                   Kualitas Udara
                 </span>
@@ -423,7 +434,7 @@ export default function HomePage() {
                   {status?.weather?.degraded ? (
                     <span className="text-rw-orange-600" aria-hidden="true">⚠</span>
                   ) : (
-                    <span className="text-rw-green-700" aria-hidden="true">●</span>
+                    <span className="text-rw-mangrove-700" aria-hidden="true">●</span>
                   )}
                   Cuaca
                 </span>

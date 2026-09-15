@@ -15,6 +15,7 @@ function getRiskVisual(level: string | null) {
         label: "Risiko Tinggi",
         color: "text-rw-red-600",
         bgColor: "bg-rw-red-100",
+        borderColor: "var(--rw-red-600)",
         icon: (
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
@@ -28,6 +29,7 @@ function getRiskVisual(level: string | null) {
         label: "Risiko Sedang",
         color: "text-rw-orange-600",
         bgColor: "bg-rw-orange-100",
+        borderColor: "var(--rw-orange-600)",
         icon: (
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
@@ -39,8 +41,9 @@ function getRiskVisual(level: string | null) {
     case "LOW":
       return {
         label: "Risiko Rendah",
-        color: "text-rw-green-700",
-        bgColor: "bg-rw-green-100",
+        color: "text-rw-mangrove-700",
+        bgColor: "bg-rw-mangrove-100",
+        borderColor: "var(--rw-mangrove-600)",
         icon: (
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
@@ -51,8 +54,9 @@ function getRiskVisual(level: string | null) {
     default:
       return {
         label: "Belum Dihitung",
-        color: "text-rw-gray-600",
-        bgColor: "bg-rw-gray-100",
+        color: "text-rw-smoke-600",
+        bgColor: "bg-rw-smoke-100",
+        borderColor: "var(--rw-smoke-400)",
         icon: (
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
@@ -66,8 +70,8 @@ function getRiskVisual(level: string | null) {
 export function RiskBadge({ assessment, compact = false }: RiskBadgeProps) {
   if (!assessment) {
     return (
-      <div className={`rounded-lg border border-rw-gray-200 ${compact ? "px-3 py-2" : "p-4"} bg-white`}>
-        <div className="flex items-center gap-2 text-rw-gray-500 text-sm">
+      <div className={`rw-instrument-panel rounded-lg border border-rw-smoke-200 ${compact ? "px-3 py-2" : "p-4"} bg-white`} style={{ borderLeftColor: "var(--rw-smoke-400)" }}>
+        <div className="flex items-center gap-2 text-rw-smoke-500 text-sm">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
             <line x1="8" y1="12" x2="16" y2="12" />
@@ -81,16 +85,16 @@ export function RiskBadge({ assessment, compact = false }: RiskBadgeProps) {
   const visual = getRiskVisual(assessment.risk_level);
 
   return (
-    <div className={`rounded-lg border border-rw-gray-200 ${compact ? "px-3 py-2" : "p-4"} bg-white`}>
+    <div className={`rw-instrument-panel rounded-lg border border-rw-smoke-200 ${compact ? "px-3 py-2" : "p-4"} bg-white`} style={{ borderLeftColor: visual.borderColor }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className={`rounded-full p-1 ${visual.bgColor} ${visual.color}`}>
             {visual.icon}
           </div>
           <div>
-            <span className="text-sm font-semibold text-rw-gray-900">{assessment.area_name}</span>
+            <span className="text-sm font-semibold text-rw-smoke-900">{assessment.area_name}</span>
             {!compact && (
-              <span className="text-xs text-rw-gray-500 ml-2">Model: {assessment.model_version}</span>
+              <span className="text-xs text-rw-smoke-500 ml-2">Model: {assessment.model_version}</span>
             )}
           </div>
         </div>
@@ -102,14 +106,14 @@ export function RiskBadge({ assessment, compact = false }: RiskBadgeProps) {
 
       {assessment.score != null && (
         <div className="mt-2 flex items-center gap-2">
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-rw-gray-100">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-rw-smoke-100">
             <div
               className={`h-full rounded-full transition-all ${
                 assessment.risk_level === "HIGH"
                   ? "bg-rw-red-600"
                   : assessment.risk_level === "MEDIUM"
                     ? "bg-rw-orange-600"
-                    : "bg-rw-green-600"
+                    : "bg-rw-mangrove-600"
               }`}
               style={{ width: `${Math.round(assessment.score * 100)}%` }}
               role="progressbar"
@@ -119,7 +123,7 @@ export function RiskBadge({ assessment, compact = false }: RiskBadgeProps) {
               aria-label={`Skor risiko: ${Math.round(assessment.score * 100)}%`}
             />
           </div>
-          <span className="text-xs font-mono text-rw-gray-700">{Math.round(assessment.score * 100)}%</span>
+          <span className="rw-readout text-xs font-medium text-rw-smoke-700">{Math.round(assessment.score * 100)}%</span>
         </div>
       )}
     </div>

@@ -4,8 +4,8 @@
   "description": "Platform pemantauan lingkungan independen untuk Provinsi Riau. Data titik panas, kualitas udara, cuaca, dan risiko kebakaran hutan.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f7f5f0",
-  "theme_color": "#276749",
+  "background_color": "#fafaf9",
+  "theme_color": "#2c1e18",
   "icons": [
     {
       "src": "/icon-192.png",

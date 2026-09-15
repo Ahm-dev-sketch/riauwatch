@@ -43,9 +43,9 @@ function confidenceColor(confidence: string | null): string {
     case "high":
       return "bg-rw-red-100 text-rw-red-600";
     case "nominal":
-      return "bg-rw-amber-100 text-rw-amber-600";
+      return "bg-rw-haze-100 text-rw-haze-700";
     default:
-      return "bg-rw-green-100 text-rw-green-700";
+      return "bg-rw-mangrove-100 text-rw-mangrove-700";
   }
 }
 
@@ -107,7 +107,7 @@ export function HotspotList({
 
   return (
     <div
-      className="rounded-xl border border-rw-gray-200 bg-white shadow-sm"
+      className="rounded-xl border border-rw-smoke-200 bg-white shadow-sm"
       role="region"
       aria-label="Daftar Titik Panas"
       data-testid="hotspot-list"
@@ -115,12 +115,12 @@ export function HotspotList({
       {/* Tile failure notice */}
       {tileError && (
         <div
-          className="flex items-start gap-3 border-b border-rw-amber-200 bg-rw-amber-100/60 px-4 py-3"
+          className="flex items-start gap-3 border-b border-rw-haze-700/30 bg-rw-haze-50 px-4 py-3"
           role="alert"
           data-testid="tile-error-notice"
         >
           <svg
-            className="h-5 w-5 flex-shrink-0 text-rw-amber-600 mt-0.5"
+            className="h-5 w-5 flex-shrink-0 text-rw-haze-600 mt-0.5"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -132,14 +132,14 @@ export function HotspotList({
             <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-rw-gray-800">
+            <p className="text-sm font-medium text-rw-smoke-800">
               Peta dasar tidak dapat dimuat. Data tetap tersedia di daftar.
             </p>
             {onRetryTiles && (
               <button
                 type="button"
                 onClick={onRetryTiles}
-                className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-rw-green-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-rw-green-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rw-green-600 transition-colors"
+                className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-rw-peat-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-rw-peat-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rw-sienna-600 transition-colors"
                 data-testid="retry-tiles-btn"
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -154,17 +154,17 @@ export function HotspotList({
       )}
 
       {/* List header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-rw-gray-100">
-        <h3 className="text-sm font-semibold text-rw-gray-900">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-rw-smoke-100">
+        <h3 className="text-sm font-semibold text-rw-smoke-900">
           Daftar Titik Panas
-          <span className="ml-1.5 text-xs font-normal text-rw-gray-500">
+          <span className="rw-readout ml-1.5 text-xs font-normal text-rw-smoke-500">
             ({displayCount} titik)
           </span>
         </h3>
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="text-xs text-rw-green-700 hover:text-rw-green-600 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rw-green-600"
+          className="text-xs text-rw-sienna-600 hover:text-rw-sienna-700 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rw-sienna-600"
           aria-expanded={expanded}
           aria-controls="hotspot-list-items"
         >
@@ -179,11 +179,11 @@ export function HotspotList({
           id="hotspot-list-items"
           role="listbox"
           aria-label="Titik panas tersedia"
-          className="max-h-[360px] overflow-y-auto rw-scrollbar divide-y divide-rw-gray-50"
+          className="max-h-[360px] overflow-y-auto rw-scrollbar divide-y divide-rw-smoke-50"
           data-testid="hotspot-list-items"
         >
           {features.length === 0 ? (
-            <li className="px-4 py-6 text-center text-sm text-rw-gray-500 italic">
+            <li className="px-4 py-6 text-center text-sm text-rw-smoke-500 italic">
               Tidak ada titik panas dalam rentang filter saat ini.
             </li>
           ) : (
@@ -202,8 +202,8 @@ export function HotspotList({
                   data-hotspot-index={index}
                   className={`group flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors ${
                     isHighlighted
-                      ? "bg-rw-green-50 ring-1 ring-inset ring-rw-green-600"
-                      : "hover:bg-rw-gray-50"
+                      ? "bg-rw-mangrove-50 ring-1 ring-inset ring-rw-mangrove-600"
+                      : "hover:bg-rw-smoke-50"
                   }`}
                   onClick={() => handleItemClick(feature, index)}
                   onKeyDown={(e) => handleKeyDown(e, feature, index)}
@@ -218,7 +218,7 @@ export function HotspotList({
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-rw-gray-900 truncate">
+                      <span className="text-sm font-medium text-rw-smoke-900 truncate">
                         {(props.area_name as string) || "Lokasi tidak diketahui"}
                       </span>
                       <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${confidenceColor(props.confidence as string | null)}`}>
@@ -228,8 +228,8 @@ export function HotspotList({
                         )}
                       </span>
                     </div>
-                    <div className="mt-1 flex items-center gap-3 text-xs text-rw-gray-500">
-                      <span className="font-mono">{coords[1].toFixed(4)}, {coords[0].toFixed(4)}</span>
+                    <div className="mt-1 flex items-center gap-3 text-xs text-rw-smoke-500">
+                      <span className="rw-readout">{coords[1].toFixed(4)}, {coords[0].toFixed(4)}</span>
                       <span aria-hidden="true">·</span>
                       <time dateTime={props.acquired_at as string}>
                         {formatAcquiredAt(props.acquired_at as string | null)}
@@ -246,7 +246,7 @@ export function HotspotList({
                       e.stopPropagation();
                       handleItemClick(feature, index);
                     }}
-                    className="flex-shrink-0 mt-0.5 rounded-md border border-rw-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-rw-green-700 hover:bg-rw-green-50 hover:border-rw-green-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rw-green-600 transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                    className="flex-shrink-0 mt-0.5 rounded-md border border-rw-smoke-200 bg-white px-2 py-1 text-[11px] font-medium text-rw-sienna-600 hover:bg-rw-sienna-50 hover:border-rw-sienna-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rw-sienna-600 transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                     aria-label={`Tampilkan di peta: ${(props.area_name as string) || "lokasi ini"}`}
                     data-testid={`show-on-map-${index}`}
                     tabIndex={-1}

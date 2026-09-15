@@ -113,7 +113,7 @@ function RiskFactors({ factors }: { factors: Record<string, unknown> }) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-rw-gray-800">{f.name}</span>
-                <span className="text-xs font-mono text-rw-gray-600">{String(f.value)}</span>
+                <span className="rw-readout text-xs font-medium text-rw-smoke-600">{String(f.value)}</span>
               </div>
               {f.reason !== String(f.value) && (
                 <p className="text-[11px] text-rw-gray-500 mt-0.5">{f.reason}</p>
@@ -134,7 +134,7 @@ function RiskCard({ assessment }: { assessment: RiskAssessment }) {
   const visual = getRiskVisual(assessment.risk_level);
 
   return (
-    <div className={`rounded-xl border ${assessment.risk_level === "HIGH" ? "border-rw-red-200" : assessment.risk_level === "MEDIUM" ? "border-rw-orange-200" : "border-rw-gray-200"} bg-white p-5 shadow-sm`}>
+    <div className={`rw-instrument-panel rounded-xl border ${assessment.risk_level === "HIGH" ? "border-rw-red-200" : assessment.risk_level === "MEDIUM" ? "border-rw-orange-200" : "border-rw-smoke-200"} bg-white p-5 shadow-sm`} style={{ borderLeftColor: assessment.risk_level === "HIGH" ? "var(--rw-red-600)" : assessment.risk_level === "MEDIUM" ? "var(--rw-orange-600)" : "var(--rw-mangrove-600)" }}>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -160,7 +160,7 @@ function RiskCard({ assessment }: { assessment: RiskAssessment }) {
         <div className="mt-3">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-rw-gray-500">Skor Risiko</span>
-            <span className="text-xs font-mono font-semibold text-rw-gray-700">
+            <span className="rw-readout text-xs font-semibold text-rw-smoke-700">
               {Math.round(assessment.score * 100)}%
             </span>
           </div>

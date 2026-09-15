@@ -250,15 +250,15 @@ function AQHistoryChart({ data, pollutant }: { data: AQHistoryPoint[]; pollutant
           </g>
         ))}
 
-        {/* Area fill */}
-        <path d={areaD} fill="rgba(39, 103, 73, 0.1)" />
+        {/* Area fill — peat-sienna tint */}
+        <path d={areaD} fill="rgba(139, 69, 19, 0.08)" />
 
-        {/* Line */}
-        <path d={pathD} fill="none" stroke="#276749" strokeWidth="2" strokeLinejoin="round" />
+        {/* Line — peat-sienna */}
+        <path d={pathD} fill="none" stroke="#8b4513" strokeWidth="2" strokeLinejoin="round" />
 
         {/* Data points (small dots) */}
         {data.map((p, i) => (
-          <circle key={i} cx={xScale(i)} cy={yScale(p.value)} r="2" fill="#276749" />
+          <circle key={i} cx={xScale(i)} cy={yScale(p.value)} r="2" fill="#8b4513" />
         ))}
 
         {/* X-axis labels */}
@@ -315,7 +315,7 @@ function StationCard({
   const category = currentObs ? getISPUCategory(currentObs.value, breakpoints) : null;
 
   return (
-    <div className="rounded-xl border border-rw-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="rw-instrument-panel rounded-xl border border-rw-smoke-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow" style={{ borderLeftColor: "var(--rw-sienna-400)" }}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h4 className="text-sm font-semibold text-rw-gray-900">
@@ -358,7 +358,7 @@ function StationCard({
       {/* Current reading */}
       {currentObs ? (
         <div className="flex items-baseline gap-2 mb-2">
-          <span className="text-2xl font-bold text-rw-gray-900 font-mono">
+          <span className="rw-readout text-2xl font-bold text-rw-gray-900">
             {currentObs.value.toFixed(1)}
           </span>
           <span className="text-sm text-rw-gray-500">{currentObs.unit}</span>
@@ -504,9 +504,9 @@ export function AirQualityPanel() {
       </div>
 
       {stale && (
-        <div className="rounded-lg border border-rw-amber-100 bg-rw-amber-100/50 p-3">
-          <p className="text-xs text-rw-gray-700 flex items-center gap-1.5">
-            <svg className="h-3.5 w-3.5 text-rw-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <div className="rounded-lg border border-rw-haze-700/30 bg-rw-haze-50 p-3">
+          <p className="text-xs text-rw-smoke-700 flex items-center gap-1.5">
+            <svg className="h-3.5 w-3.5 text-rw-haze-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />

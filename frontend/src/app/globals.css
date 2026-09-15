@@ -2,87 +2,164 @@
 
 /*
  * RIAUWATCH Design Tokens
- * Trustworthy environmental monitoring — public service, not trading dashboard.
- * Colors derived from Riau's natural landscape: tropical forest, peatland, sky.
- * NO glassmorphism, NO heavy gradients, NO crypto aesthetics.
+ *
+ * Grounded in Riau's peatland fire season: the dark peat rivers, the burnt
+ * sienna of exposed soil, the mangrove-green canopy, and the amber haze
+ * ("jerebu") that blankets the province during fire season.
+ *
+ * NO glassmorphism. NO crypto aesthetics. NO generic dashboard defaults.
+ * The design should feel like a public observation instrument —
+ * trustworthy, specific, unmistakably about this place.
  */
 
 :root {
-  /* --- Primary: Deep forest green — trustworthy, environmental --- */
-  --rw-green-900: #1a3a2a;
-  --rw-green-800: #1e4d35;
-  --rw-green-700: #276749;
-  --rw-green-600: #2d8659;
-  --rw-green-500: #38a169;
-  --rw-green-100: #c6f6d5;
-  --rw-green-50: #f0fff4;
+  /* --- Peat: Deep earth tones from Riau's peatlands --- */
+  --rw-peat-950: #1a1210;
+  --rw-peat-900: #2c1e18;
+  --rw-peat-800: #3d2b22;
+  --rw-peat-700: #5a3f30;
+  --rw-peat-600: #7a5840;
 
-  /* --- Accent: Warm amber for alerts and emphasis --- */
-  --rw-amber-600: #d69e2e;
-  --rw-amber-500: #ecc94b;
-  --rw-amber-100: #fefcbf;
+  /* --- Sienna: Warm brown — primary action, trust, grounded authority --- */
+  --rw-sienna-700: #8b4513;
+  --rw-sienna-600: #a0522d;
+  --rw-sienna-500: #b8652f;
+  --rw-sienna-400: #cd853f;
+  --rw-sienna-100: #f5e6d3;
+  --rw-sienna-50: #faf3eb;
+
+  /* --- Mangrove: Healthy tropical forest green — positive, life, clean air --- */
+  --rw-mangrove-900: #1a3a2a;
+  --rw-mangrove-800: #1e4d35;
+  --rw-mangrove-700: #276749;
+  --rw-mangrove-600: #2d8659;
+  --rw-mangrove-500: #38a169;
+  --rw-mangrove-100: #c6f6d5;
+  --rw-mangrove-50: #f0fff4;
+
+  /* --- Haze: The jerebu — amber atmospheric haze during fire season --- */
+  --rw-haze-700: #92400e;
+  --rw-haze-600: #b45309;
+  --rw-haze-500: #d97706;
+  --rw-haze-400: #f59e0b;
+  --rw-haze-100: #fef3c7;
+  --rw-haze-50: #fffbeb;
 
   /* --- Risk / Status Colors: text + icon, never color alone --- */
-  --rw-red-600: #c53030;
-  --rw-red-100: #fed7d7;
-  --rw-orange-600: #dd6b20;
-  --rw-orange-100: #feebc8;
-  --rw-yellow-500: #ecc94b;
-  --rw-yellow-100: #fefcbf;
+  --rw-red-600: #b91c1c;
+  --rw-red-100: #fee2e2;
+  --rw-orange-600: #c2410c;
+  --rw-orange-100: #ffedd5;
+  --rw-yellow-500: #eab308;
+  --rw-yellow-100: #fef9c3;
 
-  /* --- Neutrals --- */
-  --rw-gray-950: #0d1117;
-  --rw-gray-900: #1a202c;
-  --rw-gray-800: #2d3748;
-  --rw-gray-700: #4a5568;
-  --rw-gray-600: #718096;
-  --rw-gray-500: #a0aec0;
-  --rw-gray-200: #e2e8f0;
-  --rw-gray-100: #edf2f7;
-  --rw-gray-50: #f7fafc;
+  /* --- Smoke: Neutral tones — backgrounds, text, borders --- */
+  --rw-smoke-950: #0c0a09;
+  --rw-smoke-900: #1c1917;
+  --rw-smoke-800: #292524;
+  --rw-smoke-700: #44403c;
+  --rw-smoke-600: #57534e;
+  --rw-smoke-500: #78716c;
+  --rw-smoke-400: #a8a29e;
+  --rw-smoke-300: #d6d3d1;
+  --rw-smoke-200: #e7e5e4;
+  --rw-smoke-100: #f5f5f4;
+  --rw-smoke-50: #fafaf9;
   --rw-white: #ffffff;
 
   /* --- Typography --- */
-  --font-sans: "DM Sans", "Inter", system-ui, -apple-system, sans-serif;
   --font-display: "Source Serif 4", "Georgia", serif;
+  --font-sans: "DM Sans", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
   /* --- Spacing / Sizing --- */
   --sidebar-width: 320px;
 
-  --background: var(--rw-gray-50);
-  --foreground: var(--rw-gray-900);
+  --background: var(--rw-smoke-50);
+  --foreground: var(--rw-smoke-900);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-rw-green-900: var(--rw-green-900);
-  --color-rw-green-800: var(--rw-green-800);
-  --color-rw-green-700: var(--rw-green-700);
-  --color-rw-green-600: var(--rw-green-600);
-  --color-rw-green-500: var(--rw-green-500);
-  --color-rw-green-100: var(--rw-green-100);
-  --color-rw-green-50: var(--rw-green-50);
-  --color-rw-amber-600: var(--rw-amber-600);
-  --color-rw-amber-500: var(--rw-amber-500);
-  --color-rw-amber-100: var(--rw-amber-100);
+
+  /* Peat */
+  --color-rw-peat-950: var(--rw-peat-950);
+  --color-rw-peat-900: var(--rw-peat-900);
+  --color-rw-peat-800: var(--rw-peat-800);
+  --color-rw-peat-700: var(--rw-peat-700);
+  --color-rw-peat-600: var(--rw-peat-600);
+
+  /* Sienna */
+  --color-rw-sienna-700: var(--rw-sienna-700);
+  --color-rw-sienna-600: var(--rw-sienna-600);
+  --color-rw-sienna-500: var(--rw-sienna-500);
+  --color-rw-sienna-400: var(--rw-sienna-400);
+  --color-rw-sienna-100: var(--rw-sienna-100);
+  --color-rw-sienna-50: var(--rw-sienna-50);
+
+  /* Mangrove */
+  --color-rw-mangrove-900: var(--rw-mangrove-900);
+  --color-rw-mangrove-800: var(--rw-mangrove-800);
+  --color-rw-mangrove-700: var(--rw-mangrove-700);
+  --color-rw-mangrove-600: var(--rw-mangrove-600);
+  --color-rw-mangrove-500: var(--rw-mangrove-500);
+  --color-rw-mangrove-100: var(--rw-mangrove-100);
+  --color-rw-mangrove-50: var(--rw-mangrove-50);
+
+  /* Haze */
+  --color-rw-haze-700: var(--rw-haze-700);
+  --color-rw-haze-600: var(--rw-haze-600);
+  --color-rw-haze-500: var(--rw-haze-500);
+  --color-rw-haze-400: var(--rw-haze-400);
+  --color-rw-haze-100: var(--rw-haze-100);
+  --color-rw-haze-50: var(--rw-haze-50);
+
+  /* Status (kept for backward compat with components) */
   --color-rw-red-600: var(--rw-red-600);
   --color-rw-red-100: var(--rw-red-100);
   --color-rw-orange-600: var(--rw-orange-600);
   --color-rw-orange-100: var(--rw-orange-100);
   --color-rw-yellow-500: var(--rw-yellow-500);
   --color-rw-yellow-100: var(--rw-yellow-100);
-  --color-rw-gray-950: var(--rw-gray-950);
-  --color-rw-gray-900: var(--rw-gray-900);
-  --color-rw-gray-800: var(--rw-gray-800);
-  --color-rw-gray-700: var(--rw-gray-700);
-  --color-rw-gray-600: var(--rw-gray-600);
-  --color-rw-gray-500: var(--rw-gray-500);
-  --color-rw-gray-200: var(--rw-gray-200);
-  --color-rw-gray-100: var(--rw-gray-100);
-  --color-rw-gray-50: var(--rw-gray-50);
+
+  /* Smoke */
+  --color-rw-smoke-950: var(--rw-smoke-950);
+  --color-rw-smoke-900: var(--rw-smoke-900);
+  --color-rw-smoke-800: var(--rw-smoke-800);
+  --color-rw-smoke-700: var(--rw-smoke-700);
+  --color-rw-smoke-600: var(--rw-smoke-600);
+  --color-rw-smoke-500: var(--rw-smoke-500);
+  --color-rw-smoke-400: var(--rw-smoke-400);
+  --color-rw-smoke-300: var(--rw-smoke-300);
+  --color-rw-smoke-200: var(--rw-smoke-200);
+  --color-rw-smoke-100: var(--rw-smoke-100);
+  --color-rw-smoke-50: var(--rw-smoke-50);
   --color-rw-white: var(--rw-white);
+
+  /* Legacy aliases — green → mangrove, amber → haze, gray → smoke */
+  --color-rw-green-900: var(--rw-mangrove-900);
+  --color-rw-green-800: var(--rw-mangrove-800);
+  --color-rw-green-700: var(--rw-mangrove-700);
+  --color-rw-green-600: var(--rw-mangrove-600);
+  --color-rw-green-500: var(--rw-mangrove-500);
+  --color-rw-green-100: var(--rw-mangrove-100);
+  --color-rw-green-50: var(--rw-mangrove-50);
+  --color-rw-amber-600: var(--rw-haze-600);
+  --color-rw-amber-500: var(--rw-haze-500);
+  --color-rw-amber-100: var(--rw-haze-100);
+  --color-rw-gray-950: var(--rw-smoke-950);
+  --color-rw-gray-900: var(--rw-smoke-900);
+  --color-rw-gray-800: var(--rw-smoke-800);
+  --color-rw-gray-700: var(--rw-smoke-700);
+  --color-rw-gray-600: var(--rw-smoke-600);
+  --color-rw-gray-500: var(--rw-smoke-500);
+  --color-rw-gray-400: var(--rw-smoke-400);
+  --color-rw-gray-300: var(--rw-smoke-300);
+  --color-rw-gray-200: var(--rw-smoke-200);
+  --color-rw-gray-100: var(--rw-smoke-100);
+  --color-rw-gray-50: var(--rw-smoke-50);
+
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
   --font-mono: var(--font-mono);
@@ -98,21 +175,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* NOTE: do NOT set .maplibregl-map { height } here — the map container carries
- * Tailwind responsive heights (h-[400px] sm:h-[500px] lg:h-[600px]) and any
- * unlayered height rule would override those utilities (unlayered CSS beats
- * @layer utilities at equal specificity), collapsing or exploding the canvas.
- * MapLibre's own CSS sizes the canvas to fill the container. */
-
-/* Custom scrollbar for the sidebar panels */
+/* Custom scrollbar — peat-brown thumb */
 .rw-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
 .rw-scrollbar::-webkit-scrollbar-track {
-  background: var(--rw-gray-100);
+  background: var(--rw-smoke-100);
 }
 .rw-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--rw-gray-500);
+  background: var(--rw-smoke-400);
   border-radius: 3px;
 }
 
@@ -133,7 +204,7 @@ body {
 
 /* Focus visible for keyboard navigation */
 :focus-visible {
-  outline: 2px solid var(--rw-green-600);
+  outline: 2px solid var(--rw-sienna-600);
   outline-offset: 2px;
 }
 
@@ -144,7 +215,7 @@ body {
   left: 0;
   z-index: 9999;
   padding: 0.75rem 1.5rem;
-  background: var(--rw-green-800);
+  background: var(--rw-peat-900);
   color: var(--rw-white);
   font-weight: 600;
   text-decoration: none;
@@ -152,4 +223,44 @@ body {
 }
 .skip-link:focus {
   top: 0;
+}
+
+/* Jerebu strip — atmospheric gradient strip reflecting current conditions */
+.rw-jerebu-strip {
+  position: relative;
+  overflow: hidden;
+}
+.rw-jerebu-strip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  pointer-events: none;
+}
+
+/* Instrument readout — monospace numbers for data display */
+.rw-readout {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Instrument panel card — subtle left-border status indicator */
+.rw-instrument-panel {
+  border-left: 3px solid transparent;
+  transition: border-color 0.3s ease, box-shadow 0.2s ease;
+}
+.rw-instrument-panel:hover {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .rw-mock-badge {
+    animation: none;
+  }
+  .rw-jerebu-strip::before {
+    animation: none;
+  }
 }

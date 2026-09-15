@@ -87,25 +87,25 @@ function buildHotspotPopupHtml(
   coords: [number, number],
 ): string {
   return `
-    <div style="font-family:'DM Sans',sans-serif;min-width:220px;padding:4px">
-      <div style="font-weight:600;font-size:14px;margin-bottom:6px;color:#1a3a2a">
+    <div style="font-family:'DM Sans',system-ui,sans-serif;min-width:220px;padding:4px">
+      <div style="font-weight:600;font-size:14px;margin-bottom:6px;color:#2c1e18">
         ${(props.area_name as string) || "Lokasi tidak diketahui"}
       </div>
-      <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:12px;color:#4a5568">
-        <span style="color:#718096">Latitude</span>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:12px;color:#44403c">
+        <span style="color:#57534e">Latitude</span>
         <span style="font-family:'JetBrains Mono',monospace">${coords[1].toFixed(4)}</span>
-        <span style="color:#718096">Longitude</span>
+        <span style="color:#57534e">Longitude</span>
         <span style="font-family:'JetBrains Mono',monospace">${coords[0].toFixed(4)}</span>
-        <span style="color:#718096">Waktu</span>
+        <span style="color:#57534e">Waktu</span>
         <span>${formatAcquiredAt(props.acquired_at as string | null)}</span>
-        <span style="color:#718096">Confidence</span>
+        <span style="color:#57534e">Confidence</span>
         <span>${(props.confidence as string) || "-"} ${props.confidence_value != null ? `(${props.confidence_value}%)` : ""}</span>
-        <span style="color:#718096">Satelit</span>
+        <span style="color:#57534e">Satelit</span>
         <span>${(props.satellite as string) || "-"}</span>
-        <span style="color:#718096">Sumber</span>
+        <span style="color:#57534e">Sumber</span>
         <span>${(props.instrument as string) || (props.satellite as string) || "-"}</span>
       </div>
-      <div style="margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;font-size:11px;color:#718096;line-height:1.4">
+      <div style="margin-top:8px;padding-top:6px;border-top:1px solid #e7e5e4;font-size:11px;color:#57534e;line-height:1.4">
         <em>Indikasi titik panas, BUKAN kebakaran terkonfirmasi. Verifikasi lapangan diperlukan.</em>
       </div>
     </div>
@@ -296,11 +296,11 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
           "circle-color": [
             "step",
             ["get", "point_count"],
-            "#2d8659", // green-600 (< 5)
+            "#2d8659", // mangrove-600 (< 5)
             10,
-            "#d69e2e", // amber-600 (5-15)
+            "#b45309", // haze-600 (5-15)
             30,
-            "#c53030", // red-600 (15+)
+            "#b91c1c", // red-600 (15+)
           ],
           "circle-radius": [
             "step",
@@ -343,10 +343,10 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
             "match",
             ["get", "confidence"],
             "high",
-            "#c53030",   // red-600
+            "#b91c1c",   // red-600
             "nominal",
-            "#d69e2e",   // amber-600
-            "#2d8659",   // green-600 (low/other)
+            "#b45309",   // haze-600
+            "#2d8659",   // mangrove-600 (low/other)
           ],
           "circle-radius": 7,
           "circle-stroke-width": 2,
@@ -432,8 +432,8 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         type: "fill",
         source: sourceId,
         paint: {
-          "fill-color": "rgba(39, 103, 73, 0.08)",
-          "fill-outline-color": "#276749",
+          "fill-color": "rgba(139, 69, 19, 0.06)",
+          "fill-outline-color": "#8b4513",
         },
       });
 
@@ -443,7 +443,7 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         type: "line",
         source: sourceId,
         paint: {
-          "line-color": "#276749",
+          "line-color": "#8b4513",
           "line-width": 1.5,
           "line-dasharray": [3, 2],
         },
@@ -461,7 +461,7 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
           "text-allow-overlap": false,
         },
         paint: {
-          "text-color": "#1a3a2a",
+          "text-color": "#2c1e18",
           "text-halo-color": "#ffffff",
           "text-halo-width": 1.5,
         },
@@ -507,8 +507,8 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
       map.setPaintProperty(fillLayerId, "fill-color", [
         "case",
         ["boolean", ["feature-state", "hover"], false],
-        "rgba(39, 103, 73, 0.2)",
-        "rgba(39, 103, 73, 0.08)",
+        "rgba(139, 69, 19, 0.15)",
+        "rgba(139, 69, 19, 0.06)",
       ]);
 
       return () => {

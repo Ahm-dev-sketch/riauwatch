@@ -9,7 +9,7 @@ export function MockBadge() {
 
   return (
     <div
-      className="rw-mock-badge inline-flex items-center gap-1.5 rounded-full border border-rw-amber-600/30 bg-rw-amber-100 px-3 py-1 text-xs font-semibold text-rw-amber-600 shadow-sm"
+      className="rw-mock-badge inline-flex items-center gap-1.5 rounded-full border border-rw-haze-700/40 bg-rw-haze-100 px-3 py-1 text-xs font-semibold text-rw-haze-700 shadow-sm"
       role="status"
       aria-label="Data contoh sedang ditampilkan"
     >

@@ -58,7 +58,7 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
   const hasFilters = filters.dateFrom || filters.dateTo || filters.kabupatenId || filters.minConfidence;
 
   return (
-    <div className="rounded-xl border border-rw-gray-200 bg-white shadow-sm">
+    <div className="rounded-xl border border-rw-smoke-200 bg-white shadow-sm">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -66,18 +66,18 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
         aria-expanded={expanded}
       >
         <div className="flex items-center gap-2">
-          <svg className="h-4 w-4 text-rw-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <svg className="h-4 w-4 text-rw-smoke-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
           </svg>
-          <span className="text-sm font-semibold text-rw-gray-900">Filter</span>
+          <span className="text-sm font-semibold text-rw-smoke-900">Filter</span>
           {hasFilters && (
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rw-green-600 text-[10px] font-bold text-white">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rw-sienna-600 text-[10px] font-bold text-white">
               !
             </span>
           )}
         </div>
         <svg
-          className={`h-4 w-4 text-rw-gray-500 transition-transform ${expanded ? "rotate-180" : ""}`}
+          className={`h-4 w-4 text-rw-smoke-500 transition-transform ${expanded ? "rotate-180" : ""}`}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -89,11 +89,11 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
       </button>
 
       {expanded && (
-        <div className="border-t border-rw-gray-100 px-4 pb-4 pt-3 space-y-3">
+        <div className="border-t border-rw-smoke-100 px-4 pb-4 pt-3 space-y-3">
           {/* Date range */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label htmlFor="dateFrom" className="block text-xs font-medium text-rw-gray-600 mb-1">
+              <label htmlFor="dateFrom" className="block text-xs font-medium text-rw-smoke-600 mb-1">
                 Dari
               </label>
               <input
@@ -101,11 +101,11 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => update("dateFrom", e.target.value)}
-                className="w-full rounded-lg border border-rw-gray-200 px-2.5 py-1.5 text-sm text-rw-gray-800 focus:border-rw-green-600 focus-visible:ring-2 focus-visible:ring-rw-green-600 focus-visible:ring-offset-1 outline-none"
+                className="w-full rounded-lg border border-rw-smoke-200 px-2.5 py-1.5 text-sm text-rw-smoke-800 focus:border-rw-sienna-600 focus-visible:ring-2 focus-visible:ring-rw-sienna-600 focus-visible:ring-offset-1 outline-none"
               />
             </div>
             <div>
-              <label htmlFor="dateTo" className="block text-xs font-medium text-rw-gray-600 mb-1">
+              <label htmlFor="dateTo" className="block text-xs font-medium text-rw-smoke-600 mb-1">
                 Sampai
               </label>
               <input
@@ -113,21 +113,21 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => update("dateTo", e.target.value)}
-                className="w-full rounded-lg border border-rw-gray-200 px-2.5 py-1.5 text-sm text-rw-gray-800 focus:border-rw-green-600 focus-visible:ring-2 focus-visible:ring-rw-green-600 focus-visible:ring-offset-1 outline-none"
+                className="w-full rounded-lg border border-rw-smoke-200 px-2.5 py-1.5 text-sm text-rw-smoke-800 focus:border-rw-sienna-600 focus-visible:ring-2 focus-visible:ring-rw-sienna-600 focus-visible:ring-offset-1 outline-none"
               />
             </div>
           </div>
 
           {/* Kabupaten */}
           <div>
-            <label htmlFor="kabupaten" className="block text-xs font-medium text-rw-gray-600 mb-1">
+            <label htmlFor="kabupaten" className="block text-xs font-medium text-rw-smoke-600 mb-1">
               Kabupaten/Kota
             </label>
             <select
               id="kabupaten"
               value={filters.kabupatenId}
               onChange={(e) => update("kabupatenId", e.target.value)}
-              className="w-full rounded-lg border border-rw-gray-200 px-2.5 py-1.5 text-sm text-rw-gray-800 focus:border-rw-green-600 focus-visible:ring-2 focus-visible:ring-rw-green-600 focus-visible:ring-offset-1 outline-none"
+              className="w-full rounded-lg border border-rw-smoke-200 px-2.5 py-1.5 text-sm text-rw-smoke-800 focus:border-rw-sienna-600 focus-visible:ring-2 focus-visible:ring-rw-sienna-600 focus-visible:ring-offset-1 outline-none"
             >
               {KABUPATEN_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -139,14 +139,14 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
 
           {/* Confidence */}
           <div>
-            <label htmlFor="confidence" className="block text-xs font-medium text-rw-gray-600 mb-1">
+            <label htmlFor="confidence" className="block text-xs font-medium text-rw-smoke-600 mb-1">
               Confidence Minimum
             </label>
             <select
               id="confidence"
               value={filters.minConfidence}
               onChange={(e) => update("minConfidence", e.target.value)}
-              className="w-full rounded-lg border border-rw-gray-200 px-2.5 py-1.5 text-sm text-rw-gray-800 focus:border-rw-green-600 focus-visible:ring-2 focus-visible:ring-rw-green-600 focus-visible:ring-offset-1 outline-none"
+              className="w-full rounded-lg border border-rw-smoke-200 px-2.5 py-1.5 text-sm text-rw-smoke-800 focus:border-rw-sienna-600 focus-visible:ring-2 focus-visible:ring-rw-sienna-600 focus-visible:ring-offset-1 outline-none"
             >
               {CONFIDENCE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -160,7 +160,7 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
             <button
               type="button"
               onClick={reset}
-              className="w-full rounded-lg border border-rw-gray-200 px-3 py-1.5 text-xs font-medium text-rw-gray-600 hover:bg-rw-gray-50 transition-colors"
+              className="w-full rounded-lg border border-rw-smoke-200 px-3 py-1.5 text-xs font-medium text-rw-smoke-600 hover:bg-rw-smoke-50 transition-colors"
             >
               Hapus Semua Filter
             </button>
