@@ -35,24 +35,30 @@ def modis_confidence_to_category(value: int | float) -> str:
         return "h"
 
 
-def parse_acq_time(acq_time_str: str) -> int:
-    """Parse FIRMS acq_time as integer minutes from midnight.
+def parse_acq_time(acq_time_str: str) -> tuple[int, int]:
+    """Parse FIRMS acq_time (HHMM format, zero-padding not guaranteed) to (hour, minute).
 
-    FIRMS acq_time is integer minutes from midnight, zero-padding NOT guaranteed.
-    Examples: '0', '30', '1359', '0000' all valid.
+    Examples:
+      - '30' -> 00:30 -> (0, 30)
+      - '630' -> 06:30 -> (6, 30)
+      - '1425' -> 14:25 -> (14, 25)
+      - '0' -> 00:00 -> (0, 0)
     """
-    try:
-        return int(acq_time_str)
-    except ValueError:
+    clean_str = acq_time_str.strip()
+    if not clean_str.isdigit():
         raise ValueError(f"Invalid acq_time: {acq_time_str}")
+    padded = clean_str.zfill(4)
+    hours = int(padded[:2])
+    minutes = int(padded[2:])
+    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+        raise ValueError(f"Invalid time components in acq_time '{acq_time_str}': hour={hours}, minute={minutes}")
+    return hours, minutes
 
 
 def parse_acq_datetime(acq_date: str, acq_time: str) -> datetime:
-    """Parse FIRMS acq_date (YYYY-MM-DD) and acq_time (minutes from midnight) to UTC datetime."""
-    acq_time_minutes = parse_acq_time(acq_time)
-    hours = acq_time_minutes // 60
-    minutes = acq_time_minutes % 60
-    base_date = datetime.strptime(acq_date, "%Y-%m-%d").replace(tzinfo=UTC)
+    """Parse FIRMS acq_date (YYYY-MM-DD) and acq_time (HHMM) to UTC datetime."""
+    hours, minutes = parse_acq_time(acq_time)
+    base_date = datetime.strptime(acq_date.strip(), "%Y-%m-%d").replace(tzinfo=UTC)
     return base_date.replace(hour=hours, minute=minutes)
 
 

@@ -12,17 +12,17 @@ from app.ingest.firms import (
 
 
 class TestAcqTimeParsing:
-    """Tests for acq_time parsing (integer minutes from midnight)."""
+    """Tests for acq_time parsing (HHMM format)."""
 
     def test_acq_time_no_padding(self):
-        assert parse_acq_time("0") == 0
-        assert parse_acq_time("30") == 30
-        assert parse_acq_time("1359") == 1359
+        assert parse_acq_time("0") == (0, 0)
+        assert parse_acq_time("30") == (0, 30)
+        assert parse_acq_time("1359") == (13, 59)
 
     def test_acq_time_zero_padded(self):
-        assert parse_acq_time("0000") == 0
-        assert parse_acq_time("0030") == 30
-        assert parse_acq_time("1359") == 1359
+        assert parse_acq_time("0000") == (0, 0)
+        assert parse_acq_time("0030") == (0, 30)
+        assert parse_acq_time("1359") == (13, 59)
 
     def test_acq_time_invalid(self):
         try:
@@ -47,12 +47,12 @@ class TestAcqDatetimeParsing:
         dt = parse_acq_datetime("2026-08-20", "30")
         assert dt == datetime(2026, 8, 20, 0, 30, tzinfo=UTC)
 
-    def test_end_of_day(self):
+    def test_afternoon(self):
         dt = parse_acq_datetime("2026-08-20", "1359")
-        assert dt == datetime(2026, 8, 20, 22, 39, tzinfo=UTC)
+        assert dt == datetime(2026, 8, 20, 13, 59, tzinfo=UTC)
 
     def test_noon(self):
-        dt = parse_acq_datetime("2026-08-20", "720")
+        dt = parse_acq_datetime("2026-08-20", "1200")
         assert dt == datetime(2026, 8, 20, 12, 0, tzinfo=UTC)
 
 

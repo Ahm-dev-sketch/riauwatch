@@ -52,8 +52,30 @@ class OpenAQRunner(IngestionRunner):
         # Step 2: For each location, fetch latest measurements
         for location in locations:
             location_id = location["id"]
+            sensors = location.get("sensors", [])
+            sensor_map = {}
+            for s in sensors:
+                s_id = s.get("id")
+                param = s.get("parameter", {})
+                param_name = param.get("name")
+                param_unit = param.get("units", "µg/m³")
+                if s_id and param_name:
+                    sensor_map[s_id] = {"parameter": param_name, "unit": param_unit}
+
             measurements = self._fetch_latest_measurements(location_id)
             for measurement in measurements:
+                # Enrich with sensor parameter info if from OpenAQ v3
+                s_id = measurement.get("sensorsId")
+                if s_id in sensor_map:
+                    measurement["parameter"] = sensor_map[s_id]["parameter"]
+                    if "unit" not in measurement:
+                        measurement["unit"] = sensor_map[s_id]["unit"]
+
+                if "lastUpdated" not in measurement and "datetime" in measurement:
+                    dt_obj = measurement["datetime"]
+                    if isinstance(dt_obj, dict) and "utc" in dt_obj:
+                        measurement["lastUpdated"] = dt_obj["utc"]
+
                 record = {
                     "location": location,
                     "measurement": measurement,
@@ -189,7 +211,7 @@ class OpenAQRunner(IngestionRunner):
         observed_at = datetime.fromisoformat(measurement["lastUpdated"].replace("Z", "+00:00"))
         pollutant = measurement["parameter"]
         value = float(measurement["value"])
-        unit = measurement.get("unit", "µg/m³")
+        unit = "µg/m³"
 
         observation_data = {
             "station_external_id": str(location["id"]),
