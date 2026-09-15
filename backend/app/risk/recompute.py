@@ -120,7 +120,7 @@ def _assess_area(
 
     inputs: list[FactorInput] = []
     if firms_fresh and area_km2 > 0:
-        density = count / area_km2
+        density = round(count / area_km2, 4)
         sub = normalize_factor("hotspot_density_48h", density)
         inputs.append(
             FactorInput(
@@ -141,6 +141,7 @@ def _assess_area(
 
     rain = _num(w.get("rain_7d"))
     if rain is not None:
+        rain = round(rain, 1)
         sub = normalize_factor("rainfall_7d", rain)
         inputs.append(FactorInput(name="rainfall_7d", value=rain, subscore=sub,
                                   reason=rainfall_reason(rain, sub)))
@@ -150,6 +151,7 @@ def _assess_area(
 
     hum = _num(w.get("humidity_24h"))
     if hum is not None:
+        hum = round(hum, 1)
         sub = normalize_factor("humidity_24h", hum)
         inputs.append(FactorInput(name="humidity_24h", value=hum, subscore=sub,
                                   reason=humidity_reason(hum, sub)))
@@ -159,6 +161,7 @@ def _assess_area(
 
     tmax = _num(w.get("temp_max_24h"))
     if tmax is not None:
+        tmax = round(tmax, 1)
         sub = normalize_factor("temperature_24h_max", tmax)
         inputs.append(FactorInput(name="temperature_24h_max", value=tmax, subscore=sub,
                                   reason=temperature_reason(tmax, sub)))
@@ -168,6 +171,7 @@ def _assess_area(
 
     wind = _num(w.get("wind_24h"))
     if wind is not None:
+        wind = round(wind, 1)
         sub = normalize_factor("wind_24h_mean", wind)
         inputs.append(FactorInput(name="wind_24h_mean", value=wind, subscore=sub,
                                   reason=wind_reason(wind, sub)))
@@ -177,6 +181,7 @@ def _assess_area(
 
     fuel = _num(w.get("soil_moisture_24h"))
     if fuel is not None:
+        fuel = round(fuel, 2)
         sub = normalize_factor("fuel_index", fuel)
         inputs.append(FactorInput(name="fuel_index", value=fuel, subscore=sub,
                                   reason=fuel_reason(fuel, sub)))

@@ -128,6 +128,15 @@ function humanizeName(rawKey: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function formatNum(val: string | number, decimals: number = 1): string {
+  const n = typeof val === "number" ? val : parseFloat(String(val));
+  if (isNaN(n)) return String(val);
+  return n.toLocaleString("id-ID", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals,
+  });
+}
+
 function humanizeValue(rawKey: string, rawVal: string | number): string {
   if (rawVal === null || rawVal === undefined || rawVal === "-" || rawVal === "") {
     return "Tidak tersedia";
@@ -137,28 +146,31 @@ function humanizeValue(rawKey: string, rawVal: string | number): string {
   if (FACTOR_VALUE_MAP[str]) return FACTOR_VALUE_MAP[str];
 
   if (rawKey === "hotspot_count_7d") {
-    return `${rawVal} titik terdeteksi`;
+    return `${formatNum(rawVal, 0)} titik terdeteksi`;
   }
   if (rawKey === "hotspot_density_48h") {
-    return `${rawVal} titik / 1.000 km²`;
+    return `${formatNum(rawVal, 2)} titik / 1.000 km²`;
   }
   if (rawKey === "dry_spell_days") {
-    return `${rawVal} hari berturut-turut`;
+    return `${formatNum(rawVal, 0)} hari berturut-turut`;
   }
   if (rawKey === "rainfall_7d") {
-    return `${rawVal} mm`;
+    return `${formatNum(rawVal, 1)} mm`;
   }
   if (rawKey.includes("humidity")) {
-    return `${rawVal}%`;
+    return `${formatNum(rawVal, 1)}%`;
   }
   if (rawKey.includes("temp") || rawKey.includes("temperature")) {
-    return `${rawVal}°C`;
+    return `${formatNum(rawVal, 1)}°C`;
   }
   if (rawKey.includes("wind")) {
-    return `${rawVal} km/jam`;
+    return `${formatNum(rawVal, 1)} km/jam`;
+  }
+  if (rawKey.includes("fuel")) {
+    return `${formatNum(rawVal, 2)} m³/m³`;
   }
 
-  return String(rawVal);
+  return formatNum(rawVal, 1);
 }
 
 function humanizeHorizon(horizon: string): string {
