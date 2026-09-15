@@ -34,21 +34,26 @@ export function LocationPanel() {
     setLoading(true);
     setError(null);
     try {
-      // Parallel lookups
       const nearStr = `${lat},${lon}`;
-      const [areaRes, aqRes, hotspotRes, riskRes, weatherRes] = await Promise.all([
+      const west = Math.max(-180, lon - 0.4);
+      const east = Math.min(180, lon + 0.4);
+      const south = Math.max(-90, lat - 0.4);
+      const north = Math.min(90, lat + 0.4);
+      const bboxStr = `${west.toFixed(4)},${south.toFixed(4)},${east.toFixed(4)},${north.toFixed(4)}`;
+
+      const [areaRes, aqRes, hotspotRes, riskRes, weatherRes] = await Promise.allSettled([
         lookupAdministrativeArea(lat, lon),
         getAirQualityLatest({ near: nearStr }),
-        getHotspots({ bbox: `${lon - 1},${lat - 1},${lon + 1},${lat + 1}`, limit: 50 }),
+        getHotspots({ bbox: bboxStr, limit: 50 }),
         getRiskCurrent(),
         getWeatherCurrent({ near: nearStr }),
       ]);
 
-      setArea(areaRes);
-      setAq(aqRes);
-      setHotspots(hotspotRes);
-      setRisk(riskRes);
-      setWeather(weatherRes);
+      if (areaRes.status === "fulfilled") setArea(areaRes.value);
+      if (aqRes.status === "fulfilled") setAq(aqRes.value);
+      if (hotspotRes.status === "fulfilled") setHotspots(hotspotRes.value);
+      if (riskRes.status === "fulfilled") setRisk(riskRes.value);
+      if (weatherRes.status === "fulfilled") setWeather(weatherRes.value);
     } catch {
       setError("Gagal memuat data lokasi");
     } finally {

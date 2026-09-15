@@ -48,25 +48,33 @@ _FORECAST_SQL = (
 )
 
 
+_FIRST_AREA_SQL = "SELECT a.id AS id, a.name AS name FROM administrative_areas a WHERE a.level = 'kabupaten_kota' ORDER BY a.id LIMIT 1"
+
+
 def _resolve_area(db: Session, near: str | None, kabupaten_id: int | None) -> tuple[int, str]:
-    """Resolve one kabupaten/kota id+name by id or nearest polygon; raises 422/404."""
+    """Resolve one kabupaten/kota id+name by id or nearest polygon; falls back to first area."""
     if near is not None:
         try:
             lat, lon = parse_near(near)
         except ValueError as exc:
             raise unprocessable(str(exc)) from None
         row = db.execute(text(_NEAREST_AREA_SQL), {"lat": lat, "lon": lon}).mappings().first()
-        if row is None:
-            raise not_found("no administrative area found near the given coordinates")
-        area = dict(row)
-        return int(area["id"]), str(area["name"])
+        if row is not None:
+            area = dict(row)
+            return int(area["id"]), str(area["name"])
+        raise not_found("no administrative area found near the given coordinates")
     if kabupaten_id is not None:
         row = db.execute(text(_AREA_SQL), {"aid": kabupaten_id}).mappings().first()
-        if row is None:
-            raise not_found(f"administrative area {kabupaten_id} not found")
+        if row is not None:
+            area = dict(row)
+            return int(area["id"]), str(area["name"])
+        raise not_found(f"administrative area {kabupaten_id} not found")
+
+    row = db.execute(text(_FIRST_AREA_SQL)).mappings().first()
+    if row is not None:
         area = dict(row)
         return int(area["id"]), str(area["name"])
-    raise unprocessable("provide either 'near=lat,lon' or 'kabupaten_id'")
+    raise not_found("no administrative area found")
 
 
 def _to_observation(row: dict[str, Any]) -> m.WeatherObservationResponse:
@@ -105,12 +113,13 @@ def get_weather_current(
 
 @router.get("/weather/forecast", response_model=m.WeatherForecastResponse)
 def get_weather_forecast(
-    near: str = Query(description="lat,lon for nearest kabupaten/kota"),
+    near: str | None = Query(default=None, description="lat,lon for nearest kabupaten/kota"),
+    kabupaten_id: int | None = Query(default=None),
     hours: int = Query(default=24, ge=1, le=72, description="forecast window in hours (max 72)"),
     db: Session = Depends(get_db_dependency),
 ) -> m.WeatherForecastResponse:
     """Next N hours of forecast rows ordered by valid_time."""
-    area_id, area_name = _resolve_area(db, near, None)
+    area_id, area_name = _resolve_area(db, near, kabupaten_id)
     now = utcnow()
     rows = db.execute(
         text(_FORECAST_SQL),
@@ -119,5 +128,5 @@ def get_weather_forecast(
     return m.WeatherForecastResponse(
         area_id=area_id,
         area_name=area_name,
-        forecast=[_to_observation(dict(row)) for row in rows],
+        forecast=[_to_observation(dict(r)) for r in rows],
     )

@@ -252,9 +252,9 @@ export default function HomePage() {
               }
             />
             <StatusCard
-              title="Risiko Kebakaran"
-              description="Penilaian risiko kebakaran hutan dan lahan"
-              status={status?.hotspots ?? null}
+              title="Cuaca & Potensi Karhutla"
+              description="Pantauan parameter meteorologi & estimasi risiko"
+              status={status?.weather ?? null}
               icon={
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <path d="M12 2c.5 3.5 3 5.5 3 8.5a3 3 0 01-6 0c0-3 2.5-5 3-8.5z" />
@@ -321,7 +321,7 @@ export default function HomePage() {
               <div className="flex flex-col lg:flex-row gap-4">
                 {/* Sidebar: filters, legend, summary, keyboard list */}
                 <aside className="lg:w-[300px] flex-shrink-0 space-y-4" aria-label="Panel sisi peta">
-                  <FilterPanel filters={filters} onChange={handleFilterChange} />
+                  <FilterPanel filters={filters} onChange={handleFilterChange} adminAreas={adminAreas} />
                   <Legend visibleLayers={layers} onToggle={handleLayerToggle} />
                   <HotspotSummary summary={summary} loading={loading} />
                   <HotspotList

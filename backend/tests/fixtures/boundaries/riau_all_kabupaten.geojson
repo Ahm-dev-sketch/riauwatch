@@ -1,0 +1,221 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kota Pekanbaru",
+        "kode_bps": "1471",
+        "level": "kabupaten_kota"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [101.35, 0.45],
+          [101.55, 0.45],
+          [101.55, 0.65],
+          [101.35, 0.65],
+          [101.35, 0.45]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kota Dumai",
+        "kode_bps": "1472",
+        "level": "kabupaten_kota"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [101.20, 1.50],
+          [101.60, 1.50],
+          [101.60, 1.80],
+          [101.20, 1.80],
+          [101.20, 1.50]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kab. Bengkalis",
+        "kode_bps": "1403",
+        "level": "kabupaten_kota"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [101.10, 1.00],
+          [102.40, 1.00],
+          [102.40, 1.95],
+          [101.10, 1.95],
+          [101.10, 1.00]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kab. Indragiri Hilir",
+        "kode_bps": "1404",
+        "level": "kabupaten_kota"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [102.40, -1.10],
+          [103.80, -1.10],
+          [103.80, 0.10],
+          [102.40, 0.10],
+          [102.40, -1.10]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kab. Indragiri Hulu",
+        "kode_bps": "1402",
+        "level": "kabupaten_kota"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [101.80, -0.90],
+          [102.80, -0.90],
+          [102.80, -0.10],
+          [101.80, -0.10],
+          [101.80, -0.90]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kab. Kampar",
+        "kode_bps": "1401",
+        "level": "kabupaten_kota"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [100.50, -0.20],
+          [101.60, -0.20],
+          [101.60, 0.90],
+          [100.50, 0.90],
+          [100.50, -0.20]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kab. Kepulauan Meranti",
+        "kode_bps": "1410",
+        "level": "kabupaten_kota"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [102.40, 0.60],
+          [103.30, 0.60],
+          [103.30, 1.40],
+          [102.40, 1.40],
+          [102.40, 0.60]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kab. Kuantan Singingi",
+        "kode_bps": "1409",
+        "level": "kabupaten_kota"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [101.00, -1.00],
+          [101.90, -1.00],
+          [101.90, -0.10],
+          [101.00, -0.10],
+          [101.00, -1.00]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kab. Pelalawan",
+        "kode_bps": "1405",
+        "level": "kabupaten_kota"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [101.50, -0.40],
+          [103.00, -0.40],
+          [103.00, 0.70],
+          [101.50, 0.70],
+          [101.50, -0.40]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kab. Rokan Hilir",
+        "kode_bps": "1407",
+        "level": "kabupaten_kota"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [100.30, 1.40],
+          [101.40, 1.40],
+          [101.40, 2.60],
+          [100.30, 2.60],
+          [100.30, 1.40]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kab. Rokan Hulu",
+        "kode_bps": "1406",
+        "level": "kabupaten_kota"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [99.90, 0.30],
+          [101.00, 0.30],
+          [101.00, 1.60],
+          [99.90, 1.60],
+          [99.90, 0.30]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kab. Siak",
+        "kode_bps": "1408",
+        "level": "kabupaten_kota"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [101.30, 0.50],
+          [102.50, 0.50],
+          [102.50, 1.40],
+          [101.30, 1.40],
+          [101.30, 0.50]
+        ]]
+      }
+    }
+  ]
+}

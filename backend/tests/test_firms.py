@@ -264,7 +264,7 @@ class TestFIRMSRunnerNormalize:
             "latitude": "0.5",
             "longitude": "101.5",
             "acq_date": "2026-08-20",
-            "acq_time": "720",
+            "acq_time": "1200",
             "satellite": "Terra",
             "instrument": "MODIS",
             "confidence": "85",

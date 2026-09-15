@@ -3,6 +3,7 @@
 // renders WebGL via SwiftShader (see playwright.config.ts launch args).
 
 import { test, expect, type Page, type Browser } from "@playwright/test";
+import * as mocks from "../src/lib/mocks";
 
 declare global {
   interface Window {
@@ -18,15 +19,64 @@ declare global {
   }
 }
 
-const EMPTY_STYLE = { version: 8, sources: {}, layers: [] };
+// 1x1 transparent PNG tile stub so E2E never waits for external tile networks
+const TRANSPARENT_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "base64"
+);
 
 async function stubMapStyle(page: Page): Promise<void> {
-  await page.route("https://tiles.openfreemap.org/**", async (route) => {
+  await page.route(/.*(tile\.openstreetmap\.org|basemaps\.cartocdn\.com|openfreemap\.org).*/, async (route) => {
     await route.fulfill({
       status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_STYLE),
+      contentType: "image/png",
+      body: TRANSPARENT_PNG,
     });
+  });
+}
+
+async function stubApiRoutes(page: Page): Promise<void> {
+  await page.route("**/api/v1/**", async (route) => {
+    const url = new URL(route.request().url());
+    const path = url.pathname.replace(/^\/api\/v1/, "");
+    const params = Object.fromEntries(url.searchParams.entries());
+
+    if (path === "/status") {
+      return route.fulfill({ status: 200, json: mocks.mockStatus });
+    }
+    if (path === "/hotspots") {
+      return route.fulfill({ status: 200, json: mocks.filterMockHotspots(params) });
+    }
+    if (path === "/hotspots/summary") {
+      return route.fulfill({ status: 200, json: mocks.summarizeMockHotspots(params) });
+    }
+    if (path.startsWith("/air-quality/latest")) {
+      return route.fulfill({ status: 200, json: mocks.mockAirQuality });
+    }
+    if (path.startsWith("/air-quality/history")) {
+      const sid = params.station_id ? Number(params.station_id) : 1;
+      const pol = params.pollutant || "pm25";
+      return route.fulfill({ status: 200, json: mocks.getMockAirQualityHistory(sid, pol) });
+    }
+    if (path.startsWith("/weather/current")) {
+      return route.fulfill({ status: 200, json: mocks.mockWeather });
+    }
+    if (path.startsWith("/weather/forecast")) {
+      return route.fulfill({ status: 200, json: mocks.mockWeatherForecast });
+    }
+    if (path.startsWith("/risk/current")) {
+      return route.fulfill({ status: 200, json: mocks.mockRisk });
+    }
+    if (path.startsWith("/administrative-areas/lookup")) {
+      return route.fulfill({ status: 200, json: mocks.mockAdminLookup });
+    }
+    if (path.startsWith("/administrative-areas")) {
+      return route.fulfill({ status: 200, json: mocks.mockAdminAreas });
+    }
+    if (path === "/meta/data-sources") {
+      return route.fulfill({ status: 200, json: mocks.mockDataSources });
+    }
+    return route.fulfill({ status: 200, json: {} });
   });
 }
 
@@ -37,6 +87,7 @@ async function waitForMap(page: Page): Promise<void> {
 
 test.beforeEach(async ({ page }) => {
   await stubMapStyle(page);
+  await stubApiRoutes(page);
 });
 
 // (1) Homepage loads with no login.
@@ -150,6 +201,7 @@ test.describe("journey 8: geolocation", () => {
     });
     const page = await context.newPage();
     await stubMapStyle(page);
+    await stubApiRoutes(page);
     try {
       await page.goto("/");
       await page.getByRole("tab", { name: "Lokasi Saya" }).click();

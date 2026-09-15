@@ -6,32 +6,31 @@ import { useRouter } from "next/navigation";
 import type { Map, MapLayerMouseEvent, GeoJSONSource, StyleSpecification } from "maplibre-gl";
 import type { HotspotsResponse, AdminAreasResponse } from "@/lib/types";
 
-// Riau province bounding box (approximate center of the province)
-const RIAU_CENTER: [number, number] = [101.5, 0.5];
-const RIAU_ZOOM = 7;
+// Riau province coordinates & default view
+const RIAU_CENTER: [number, number] = [101.65, 0.55];
+const RIAU_ZOOM = 6.8;
 
-// High-reliability self-contained raster basemap (CARTO Positron + OpenStreetMap).
-// Free, fast, no API key required, zero external style.json dependency.
+// Clean, reliable, 100% free OpenStreetMap standard raster tiles.
+// No API key required, zero watermarks, zero duplication.
 const DEFAULT_MAP_STYLE: StyleSpecification = {
   version: 8,
   sources: {
-    "osm-carto-raster": {
+    "osm-raster": {
       type: "raster",
       tiles: [
-        "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
       ],
       tileSize: 256,
-      attribution: "© OpenStreetMap contributors, © CARTO",
+      attribution: "© OpenStreetMap contributors",
     },
   },
   layers: [
     {
-      id: "osm-carto-raster-layer",
+      id: "osm-raster-layer",
       type: "raster",
-      source: "osm-carto-raster",
+      source: "osm-raster",
       minzoom: 0,
       maxzoom: 19,
     },
@@ -237,8 +236,8 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
           map.resize();
           reportTileStatus(false);
           tileErrorCountRef.current = 0;
-          // E2E hook (mock mode only): let Playwright project coordinates to pixels.
-          if (process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
+          // Expose testing/E2E hook safely on window
+          if (typeof window !== "undefined") {
             (window as unknown as { __rwMap?: Map }).__rwMap = map;
           }
         });
@@ -279,8 +278,8 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         clusterRadius: 50,
       });
 
-      // E2E hooks (mock mode only): expose the wired feature list and a popup
-      if (process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
+      // Expose wired feature list and popup trigger for test/automation
+      if (typeof window !== "undefined") {
         const w = window as unknown as {
           __rwHotspots?: HotspotFeature[];
           __rwShowHotspotPopup?: (index: number) => boolean;

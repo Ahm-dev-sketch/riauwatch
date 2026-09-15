@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import type { AdminAreasResponse } from "@/lib/types";
 
 export interface FilterState {
   dateFrom: string;
@@ -12,6 +13,7 @@ export interface FilterState {
 interface FilterPanelProps {
   filters: FilterState;
   onChange: (filters: FilterState) => void;
+  adminAreas?: AdminAreasResponse | null;
 }
 
 export const KABUPATEN_OPTIONS = [
@@ -37,12 +39,26 @@ const CONFIDENCE_OPTIONS = [
   { value: "l", label: "Low (<30%)" },
 ] as const;
 
-export function FilterPanel({ filters, onChange }: FilterPanelProps) {
+export function FilterPanel({ filters, onChange, adminAreas }: FilterPanelProps) {
   const [expanded, setExpanded] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [kabupatenSearch, setKabupatenSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const activeOptions = useMemo(() => {
+    if (adminAreas && adminAreas.features && adminAreas.features.length > 0) {
+      const items = adminAreas.features
+        .filter((f) => f.properties.level === "kabupaten_kota")
+        .map((f) => ({
+          value: String(f.properties.id),
+          label: f.properties.name,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      return [{ value: "", label: "Semua Kabupaten/Kota" }, ...items];
+    }
+    return KABUPATEN_OPTIONS;
+  }, [adminAreas]);
 
   const update = (key: keyof FilterState, value: string) => {
     onChange({ ...filters, [key]: value });
@@ -77,15 +93,15 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
   }, [dropdownOpen]);
 
   const filteredKabupaten = useMemo(() => {
-    if (!kabupatenSearch.trim()) return KABUPATEN_OPTIONS;
+    if (!kabupatenSearch.trim()) return activeOptions;
     const query = kabupatenSearch.toLowerCase();
-    return KABUPATEN_OPTIONS.filter(
+    return activeOptions.filter(
       (opt) => opt.value === "" || opt.label.toLowerCase().includes(query)
     );
-  }, [kabupatenSearch]);
+  }, [kabupatenSearch, activeOptions]);
 
   const hasFilters = filters.dateFrom || filters.dateTo || filters.kabupatenId || filters.minConfidence;
-  const selectedKabupaten = KABUPATEN_OPTIONS.find((k) => k.value === filters.kabupatenId) ?? KABUPATEN_OPTIONS[0];
+  const selectedKabupaten = activeOptions.find((k) => k.value === filters.kabupatenId) ?? activeOptions[0];
 
   return (
     <div className="rounded-xl border border-rw-smoke-200 bg-white shadow-sm">
@@ -174,7 +190,7 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
               tabIndex={-1}
               aria-hidden="true"
             >
-              {KABUPATEN_OPTIONS.map((opt) => (
+              {activeOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>

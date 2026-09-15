@@ -97,7 +97,7 @@ class BoundariesRunner(IngestionRunner):
         unmapped = set(properties.keys()) - known_props
         if unmapped:
             logger = __import__("logging").getLogger(__name__)
-            logger.info("Unmapped boundary properties", extra={"unmapped": list(unmapped), "name": name})
+            logger.info("Unmapped boundary properties", extra={"unmapped": list(unmapped), "area_name": name})
 
         return {
             "kode_bps": kode_bps,

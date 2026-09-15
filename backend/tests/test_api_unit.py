@@ -356,8 +356,8 @@ class TestValidationShapes:
         assert resp.status_code == 422
         assert resp.json()["title"] == "Validation Error"
 
-    def test_forecast_missing_near_422(self, empty_client):
-        assert empty_client.get("/api/v1/weather/forecast").status_code == 422
+    def test_forecast_bad_near_422(self, empty_client):
+        assert empty_client.get("/api/v1/weather/forecast", params={"near": "invalid"}).status_code == 422
 
     def test_forecast_hours_cap_422(self, empty_client):
         resp = empty_client.get(

@@ -49,6 +49,13 @@ _HISTORY_SQL = (
 )
 
 
+_ALL_STATIONS_SQL = (
+    "SELECT s.id AS id, s.name AS name, s.external_id AS external_id, "
+    "NULL::float AS distance_km FROM monitoring_stations s "
+    "ORDER BY s.id LIMIT 50"
+)
+
+
 def _station_ids_clause(ids: list[int]) -> str:
     """Inline integer station ids (safe: ints validated by the DB driver layer)."""
     return "(" + ", ".join(str(int(i)) for i in ids) + ")"
@@ -70,7 +77,7 @@ def get_air_quality_latest(
     elif kabupaten_id is not None:
         stations = db.execute(text(_AREA_STATIONS_SQL), {"kab": kabupaten_id}).mappings().all()
     else:
-        raise unprocessable("provide either 'near=lat,lon' or 'kabupaten_id'")
+        stations = db.execute(text(_ALL_STATIONS_SQL)).mappings().all()
 
     result: list[m.AQStationLatest] = []
     station_rows = [dict(r) for r in stations]
