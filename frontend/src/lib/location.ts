@@ -1,16 +1,29 @@
 /**
  * Modul Geolocation Lintas Perangkat (iOS/Apple Safari, Android, Windows, macOS)
- *
- * Mengatasi kendala pada Apple WebKit (iOS/Safari):
- * 1. Mode bertingkat: GPS Akurasi Tinggi -> Jaringan Seluler/WiFi -> IP Geolocation Fallback
- * 2. Menangani batasan HTTPS/insecure origin pada perangkat seluler
- * 3. Cache koordinat untuk performa cepat tanpa popup izin berulang
+ * & Reverse Geocoding Universal (Dalam & Luar Provinsi Riau).
  */
+
+import { resolveRiauLocation, RIAU_KABUPATEN_GEOMETRY } from "./geo";
 
 export interface GeoLocationResult {
   latitude: number;
   longitude: number;
   source: "gps" | "network" | "ip_fallback";
+}
+
+export interface UniversalLocationInfo {
+  inRiau: boolean;
+  cityOrDistrict: string;
+  fullLocationName: string;
+  closestRiauKabupaten: string;
+  closestRiauKabupatenId: number;
+  distanceToRiauKm: number;
+}
+
+export interface GridAirQuality {
+  pm25: number;
+  pm10: number;
+  isModelEstimate: boolean;
 }
 
 /**
@@ -52,52 +65,106 @@ export async function getIpGeolocation(): Promise<GeoLocationResult | null> {
 }
 
 /**
- * Dapatkan lokasi pengguna dengan fallback berlapis yang kompatibel dengan iOS/Apple Safari
+ * Deteksi apakah koordinat berada di dalam wilayah administratif Provinsi Riau
  */
-export async function getCrossPlatformLocation(): Promise<GeoLocationResult> {
-  if (typeof window === "undefined" || !navigator.geolocation) {
-    const ipRes = await getIpGeolocation();
-    return ipRes ?? { latitude: 0.5333, longitude: 101.45, source: "ip_fallback" };
-  }
+export function isCoordinateInsideRiau(lat: number, lon: number): boolean {
+  return lon >= 99.8 && lon <= 103.95 && lat >= -1.8 && lat <= 2.75;
+}
 
-  // 1. Coba GPS perangkat dengan timeout wajar & caching 60 detik (sangat cocok untuk iOS Safari)
-  const tryGps = (highAccuracy: boolean, timeoutMs: number): Promise<GeoLocationResult> => {
-    return new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          resolve({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            source: highAccuracy ? "gps" : "network",
-          });
-        },
-        (err) => reject(err),
-        {
-          enableHighAccuracy: highAccuracy,
-          timeout: timeoutMs,
-          maximumAge: 60000,
-        },
-      );
-    });
-  };
+function calcEuclideanDistKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const dLat = (lat2 - lat1) * 111.32;
+  const dLon = (lon2 - lon1) * 111.32 * Math.cos(((lat1 + lat2) * Math.PI) / 360);
+  return Math.sqrt(dLat * dLat + dLon * dLon);
+}
 
-  try {
-    // Percobaan 1: Akurasi normal (cepat, ramah baterai & langsung lolos di iOS)
-    return await tryGps(false, 8000);
-  } catch {
-    try {
-      // Percobaan 2: Coba dengan GPS satellite lock
-      return await tryGps(true, 10000);
-    } catch {
-      // Percobaan 3: Fallback ke estimasi IP jika izin ditolak atau waktu habis di iOS
-      const ipResult = await getIpGeolocation();
-      return (
-        ipResult ?? {
-          latitude: 0.5333,
-          longitude: 101.45,
-          source: "ip_fallback",
-        }
-      );
+/**
+ * Reverse Geocoding pintar untuk mengenali lokasi pengguna di dalam maupun di luar Riau (misal: Padang, Medan, Jambi, Jakarta)
+ */
+export async function reverseGeocodeUniversal(
+  lat: number,
+  lon: number,
+  providedAreaName?: string | null,
+): Promise<UniversalLocationInfo> {
+  const inRiau = isCoordinateInsideRiau(lat, lon);
+  const riauResolved = resolveRiauLocation(lat, lon, providedAreaName);
+
+  // Cari kabupaten Riau yang paling dekat
+  let closestKab = RIAU_KABUPATEN_GEOMETRY[0];
+  let minDistance = Infinity;
+
+  for (const kab of RIAU_KABUPATEN_GEOMETRY) {
+    const dist = calcEuclideanDistKm(lat, lon, kab.centroid[0], kab.centroid[1]);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestKab = kab;
     }
   }
+
+  if (inRiau && !riauResolved.isBorderSector) {
+    return {
+      inRiau: true,
+      cityOrDistrict: riauResolved.kabupatenName,
+      fullLocationName: riauResolved.fullDescription,
+      closestRiauKabupaten: riauResolved.kabupatenName,
+      closestRiauKabupatenId: riauResolved.kabupatenId,
+      distanceToRiauKm: 0,
+    };
+  }
+
+  // Jika di luar Riau, coba fetch nama kota sebenarnya dari reverse geocoding publik
+  let externalCityName = "";
+  let externalProvinceName = "";
+
+  try {
+    const geoUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=id`;
+    const res = await fetch(geoUrl, { cache: "no-store", signal: AbortSignal.timeout(3500) });
+    if (res.ok) {
+      const data = await res.json();
+      externalCityName = data.city || data.locality || data.principalSubdivision || "";
+      externalProvinceName = data.principalSubdivision || data.countryName || "";
+    }
+  } catch {
+    // Fallback heuristic jika lookup reverse geocode offline
+    if (lat < -0.3 && lon < 101.0) externalCityName = "Sumatera Barat";
+    else if (lat < -0.8 && lon >= 102.0) externalCityName = "Jambi";
+    else if (lat > 1.8 && lon < 100.2) externalCityName = "Sumatera Utara";
+    else externalCityName = "Luar Provinsi Riau";
+  }
+
+  const cityName = externalCityName
+    ? `${externalCityName}${externalProvinceName && !externalCityName.includes(externalProvinceName) ? `, ${externalProvinceName}` : ""}`
+    : `Luar Riau (Koordinat: ${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`;
+
+  return {
+    inRiau: false,
+    cityOrDistrict: externalCityName || "Luar Riau",
+    fullLocationName: cityName,
+    closestRiauKabupaten: closestKab.name,
+    closestRiauKabupatenId: closestKab.id,
+    distanceToRiauKm: Math.round(minDistance),
+  };
+}
+
+/**
+ * Ambil data kualitas udara model satelit (CAMS Open-Meteo) presisi di titik koordinat manapun di bumi
+ */
+export async function fetchGridAirQuality(lat: number, lon: number): Promise<GridAirQuality | null> {
+  try {
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5,pm10`;
+    const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const data = await res.json();
+      const current = data.current;
+      if (current && typeof current.pm2_5 === "number") {
+        return {
+          pm25: current.pm2_5,
+          pm10: current.pm10 ?? current.pm2_5 * 1.35,
+          isModelEstimate: true,
+        };
+      }
+    }
+  } catch {
+    // Non-critical
+  }
+  return null;
 }

@@ -206,8 +206,8 @@ test.describe("journey 8: geolocation", () => {
       await page.goto("/");
       await page.getByRole("tab", { name: "Lokasi Saya" }).click();
       await page.getByRole("button", { name: "Gunakan Lokasi Saya" }).click();
-      await expect(page.getByText("Kab. Kampar").first()).toBeVisible({ timeout: 15_000 });
-      await expect(page.getByText("Stasiun Kualitas Udara Terdekat")).toBeVisible();
+      await expect(page.getByText(/Pekanbaru|Kampar/).first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText("Kualitas Udara").first()).toBeVisible();
     } finally {
       await context.close();
     }

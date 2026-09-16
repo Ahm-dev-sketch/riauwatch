@@ -5,7 +5,7 @@ import { lookupAdministrativeArea, getAirQualityLatest, getHotspots, getRiskCurr
 import type { AdminAreaLookupResponse, AirQualityLatestResponse, HotspotsResponse, RiskCurrentResponse, WeatherCurrentResponse } from "@/lib/types";
 import { MockBadge } from "./MockBadge";
 import { convertPm25 } from "@/lib/aqi";
-import { getIpGeolocation } from "@/lib/location";
+import { getIpGeolocation, reverseGeocodeUniversal, fetchGridAirQuality, type UniversalLocationInfo, type GridAirQuality } from "@/lib/location";
 import { RIAU_KABUPATEN_GEOMETRY } from "@/lib/geo";
 
 // ---------------------------------------------------------------------------
@@ -29,6 +29,8 @@ export function LocationPanel({
 } = {}) {
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [area, setArea] = useState<AdminAreaLookupResponse | null>(null);
+  const [universalInfo, setUniversalInfo] = useState<UniversalLocationInfo | null>(null);
+  const [gridAq, setGridAq] = useState<GridAirQuality | null>(null);
   const [aq, setAq] = useState<AirQualityLatestResponse | null>(null);
   const [hotspots, setHotspots] = useState<HotspotsResponse | null>(null);
   const [risk, setRisk] = useState<RiskCurrentResponse | null>(null);
@@ -49,15 +51,35 @@ export function LocationPanel({
       const north = Math.min(90, lat + 0.4);
       const bboxStr = `${west.toFixed(4)},${south.toFixed(4)},${east.toFixed(4)},${north.toFixed(4)}`;
 
-      const [areaRes, aqRes, hotspotRes, riskRes, weatherRes] = await Promise.allSettled([
+      const [areaRes, aqRes, hotspotRes, riskRes, weatherRes, uniRes, gridAqRes] = await Promise.allSettled([
         lookupAdministrativeArea(lat, lon),
         getAirQualityLatest({ near: nearStr }),
         getHotspots({ bbox: bboxStr, limit: 50 }),
         getRiskCurrent(),
         getWeatherCurrent({ near: nearStr }),
+        reverseGeocodeUniversal(lat, lon),
+        fetchGridAirQuality(lat, lon),
       ]);
 
-      if (areaRes.status === "fulfilled") setArea(areaRes.value);
+      if (uniRes.status === "fulfilled") {
+        setUniversalInfo(uniRes.value);
+      }
+
+      if (gridAqRes.status === "fulfilled" && gridAqRes.value) {
+        setGridAq(gridAqRes.value);
+      }
+
+      if (areaRes.status === "fulfilled" && areaRes.value) {
+        setArea(areaRes.value);
+      } else if (uniRes.status === "fulfilled") {
+        const u = uniRes.value;
+        setArea({
+          id: u.closestRiauKabupatenId,
+          name: u.fullLocationName,
+          level: u.inRiau ? "kabupaten_kota" : "luar_provinsi",
+        });
+      }
+
       if (aqRes.status === "fulfilled") setAq(aqRes.value);
       if (hotspotRes.status === "fulfilled") setHotspots(hotspotRes.value);
       if (riskRes.status === "fulfilled") setRisk(riskRes.value);
@@ -259,30 +281,62 @@ export function LocationPanel({
       )}
 
       {/* Results */}
-      {coords && area && !loading && (
+      {coords && (area || universalInfo) && !loading && (
         <>
-          {/* Area info */}
-          <div className="rounded-xl border border-rw-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <svg className="h-4 w-4 text-rw-sienna-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-              <span className="text-sm font-semibold text-rw-gray-900">{area.name}</span>
-              <span className="text-xs text-rw-gray-500">({area.level})</span>
+          {/* Area info Card */}
+          <div className="rounded-xl border border-rw-smoke-200 bg-white p-4 shadow-sm space-y-1.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <svg className="h-4 w-4 text-rw-sienna-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <span className="text-sm font-bold text-rw-peat-900">
+                  {universalInfo?.fullLocationName || area?.name || "Wilayah Terdeteksi"}
+                </span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                universalInfo?.inRiau !== false
+                  ? "bg-rw-mangrove-100 text-rw-mangrove-800"
+                  : "bg-blue-100 text-blue-800"
+              }`}>
+                {universalInfo?.inRiau !== false ? "Provinsi Riau" : "Di Luar Provinsi Riau"}
+              </span>
             </div>
-            <p className="text-xs text-rw-gray-500">
-              Koordinat: {coords.lat.toFixed(4)}, {coords.lon.toFixed(4)}
-            </p>
+            <div className="flex items-center justify-between text-xs text-rw-smoke-500 pt-0.5">
+              <span>Koordinat GPS: {coords.lat.toFixed(4)}°, {coords.lon.toFixed(4)}°</span>
+              {universalInfo && !universalInfo.inRiau && (
+                <span>Wilayah Riau terdekat: <strong className="text-rw-peat-900">{universalInfo.closestRiauKabupaten}</strong> (~{universalInfo.distanceToRiauKm} km)</span>
+              )}
+            </div>
           </div>
 
-          {/* Nearest AQ station */}
-          {aq && aq.stations.length > 0 && (
+          {/* Transboundary Haze Dispersion Card for Out-of-Province Users */}
+          {universalInfo && !universalInfo.inRiau && weather && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 shadow-2xs space-y-2 text-xs text-blue-950">
+              <div className="flex items-center gap-2 text-blue-900 font-bold text-sm">
+                <svg className="h-4 w-4 text-blue-700 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                <span>Status Potensi Kabut Asap Karhutla Riau</span>
+              </div>
+              <p className="leading-relaxed">
+                Arah angin regional di perbatasan saat ini bertiup ke arah <strong>{windDirectionLabel(weather.observation.wind_direction_deg)}</strong> ({weather.observation.wind_speed_kmh?.toFixed(1) ?? "8.5"} km/jam).
+                {weather.observation.wind_direction_deg && (weather.observation.wind_direction_deg >= 135 && weather.observation.wind_direction_deg <= 225)
+                  ? " Asap bergerak ke arah Utara/Timur Laut (menjauhi wilayah Anda di " + universalInfo.cityOrDistrict + ")."
+                  : " Tetap pantau arah angin untuk antisipasi potensi dispersi kabut asap kiriman."}
+              </p>
+            </div>
+          )}
+
+          {/* Nearest AQ station / Grid Air Quality */}
+          {((aq && aq.stations.length > 0) || gridAq) && (
             <div className="space-y-2">
-              {aq.stations.slice(0, 1).map((s) => {
-                const pm25 = s.observations.find((o) => o.pollutant === "pm25");
-                const rawVal = pm25?.value ?? 25.0;
-                const dist = s.distance_km ?? 0;
+              {(() => {
+                const s = aq?.stations?.[0];
+                const pm25Obs = s?.observations.find((o) => o.pollutant === "pm25");
+                const rawVal = gridAq?.pm25 ?? pm25Obs?.value ?? 25.0;
+                const dist = s?.distance_km ?? universalInfo?.distanceToRiauKm ?? 0;
                 const isClose = dist < 15;
                 const isModerate = dist >= 15 && dist <= 30;
                 const isFar = dist > 30;
@@ -291,7 +345,7 @@ export function LocationPanel({
 
                 return (
                   <div
-                    key={s.station_id}
+                    key={s?.station_id ?? "grid-aq"}
                     className={`rounded-xl border bg-white p-5 shadow-sm space-y-4 ${
                       isFar ? "border-amber-300 ring-1 ring-amber-200" : "border-rw-smoke-200"
                     }`}
@@ -300,11 +354,20 @@ export function LocationPanel({
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rw-smoke-100 pb-3">
                       <div>
                         <span className="text-[11px] font-bold uppercase tracking-wider text-rw-smoke-500 block">
-                          Stasiun Kualitas Udara Terdekat
+                          {universalInfo && !universalInfo.inRiau
+                            ? `Kualitas Udara di ${universalInfo.cityOrDistrict}`
+                            : "Stasiun Kualitas Udara Terdekat"}
                         </span>
                         <h3 className="text-base font-bold text-rw-peat-900 mt-0.5">
-                          {s.station_name || `Stasiun #${s.station_id}`}
+                          {universalInfo && !universalInfo.inRiau
+                            ? `Titik Koordinat ${universalInfo.cityOrDistrict}`
+                            : s?.station_name || `Stasiun #${s?.station_id}`}
                         </h3>
+                        {s?.station_name && universalInfo && !universalInfo.inRiau && (
+                          <p className="text-xs text-rw-smoke-500 mt-0.5">
+                            Stasiun fisik terdekat: {s.station_name} ({dist.toFixed(1)} km)
+                          </p>
+                        )}
                       </div>
 
                       {/* Badge Representasi Radius Jarak */}
@@ -365,7 +428,7 @@ export function LocationPanel({
                             Konsentrasi PM2.5
                           </span>
                           <span className="text-[10px] font-semibold text-rw-smoke-500 bg-rw-smoke-200/70 px-1.5 py-0.5 rounded">
-                            Sensor Fisik
+                            {gridAq?.isModelEstimate ? "Model Satelit" : "Sensor Fisik"}
                           </span>
                         </div>
                         <div className="flex items-baseline gap-1 mt-2">
@@ -402,7 +465,7 @@ export function LocationPanel({
                     )}
                   </div>
                 );
-              })}
+              })()}
             </div>
           )}
 
@@ -424,44 +487,56 @@ export function LocationPanel({
 
           {/* Area risk */}
           {risk && risk.assessments.length > 0 && (
-            <div className="rounded-xl border border-rw-gray-200 bg-white p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-rw-gray-900 mb-2">Risiko Kebakaran</h3>
-              {risk.assessments.filter((a) => a.area_name.toLowerCase().includes(area.name.toLowerCase()) || area.name.toLowerCase().includes(a.area_name.toLowerCase())).slice(0, 1).map((a) => {
-                const norm = (a.risk_level || "").toUpperCase();
-                const scoreVal = a.score != null ? (a.score > 1 ? a.score : a.score * 100) : null;
-                const label =
-                  norm === "VERY_HIGH" || norm === "EXTREME"
-                    ? "Risiko Sangat Tinggi"
-                    : norm === "HIGH"
-                      ? "Risiko Tinggi"
-                      : norm === "MODERATE" || norm === "MEDIUM"
-                        ? "Risiko Sedang"
-                        : norm === "LOW"
-                          ? "Risiko Rendah"
-                          : "Data Belum Cukup";
-                const color =
-                  norm === "HIGH" || norm === "EXTREME"
-                    ? "text-rw-red-600"
-                    : norm === "MODERATE" || norm === "MEDIUM"
-                      ? "text-rw-orange-600"
-                      : norm === "LOW"
-                        ? "text-rw-mangrove-700"
-                        : "text-rw-smoke-600";
-
-                return (
-                  <div key={a.area_id} className="flex items-center gap-2">
-                    <span className={`text-sm font-semibold ${color}`}>
-                      {label}
-                    </span>
-                    {scoreVal != null && (
-                      <span className="text-xs font-mono text-rw-gray-600">({Math.round(scoreVal)}%)</span>
-                    )}
-                  </div>
+            <div className="rounded-xl border border-rw-smoke-200 bg-white p-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-rw-peat-900 mb-2">
+                {universalInfo && !universalInfo.inRiau
+                  ? `Risiko Kebakaran (Wilayah Riau Terdekat: ${universalInfo.closestRiauKabupaten})`
+                  : "Risiko Kebakaran"}
+              </h3>
+              {(() => {
+                const targetArea = (universalInfo?.inRiau ? area?.name : universalInfo?.closestRiauKabupaten) || area?.name || "Pekanbaru";
+                const matchedRisk = risk.assessments.filter((a) =>
+                  a.area_name.toLowerCase().includes(targetArea.toLowerCase()) || targetArea.toLowerCase().includes(a.area_name.toLowerCase())
                 );
-              })}
-              {risk.assessments.filter((a) => a.area_name.toLowerCase().includes(area.name.toLowerCase()) || area.name.toLowerCase().includes(a.area_name.toLowerCase())).length === 0 && (
-                <p className="text-xs text-rw-gray-500 italic">Risiko belum dihitung untuk {area.name}</p>
-              )}
+
+                if (matchedRisk.length === 0) {
+                  return <p className="text-xs text-rw-smoke-500 italic">Risiko belum dihitung untuk {targetArea}</p>;
+                }
+
+                return matchedRisk.slice(0, 1).map((a) => {
+                  const norm = (a.risk_level || "").toUpperCase();
+                  const scoreVal = a.score != null ? (a.score > 1 ? a.score : a.score * 100) : null;
+                  const label =
+                    norm === "VERY_HIGH" || norm === "EXTREME"
+                      ? "Risiko Sangat Tinggi"
+                      : norm === "HIGH"
+                        ? "Risiko Tinggi"
+                        : norm === "MODERATE" || norm === "MEDIUM"
+                          ? "Risiko Sedang"
+                          : norm === "LOW"
+                            ? "Risiko Rendah"
+                            : "Data Belum Cukup";
+                  const color =
+                    norm === "HIGH" || norm === "EXTREME"
+                      ? "text-rw-red-600"
+                      : norm === "MODERATE" || norm === "MEDIUM"
+                        ? "text-rw-orange-600"
+                        : norm === "LOW"
+                          ? "text-rw-mangrove-700"
+                          : "text-rw-smoke-600";
+
+                  return (
+                    <div key={a.area_id} className="flex items-center gap-2">
+                      <span className={`text-sm font-semibold ${color}`}>
+                        {label}
+                      </span>
+                      {scoreVal != null && (
+                        <span className="text-xs font-mono text-rw-smoke-600">({Math.round(scoreVal)}%)</span>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           )}
 
