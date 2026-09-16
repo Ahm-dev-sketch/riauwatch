@@ -428,10 +428,12 @@ export function RiskDetailPanel({
   kabupatenId,
   userKabupatenId,
   userKabupatenName,
+  onNavigateLocation,
 }: {
   kabupatenId?: number;
   userKabupatenId?: number;
   userKabupatenName?: string;
+  onNavigateLocation?: () => void;
 }) {
   const [data, setData] = useState<RiskCurrentResponse | null>(null);
   const [aqStations, setAqStations] = useState<AQStationLatest[] | null>(null);
@@ -565,6 +567,28 @@ export function RiskDetailPanel({
         </div>
         <MockBadge />
       </div>
+
+      {/* Location Hint Banner if location not yet set */}
+      {!userKabupatenName && !kabupatenId && onNavigateLocation && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-rw-smoke-200 bg-rw-smoke-50 px-4 py-3 text-xs text-rw-smoke-700 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <svg className="h-4 w-4 text-rw-sienna-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            <span>
+              Ingin memprioritaskan risiko di wilayah Anda? Silakan nyalakan akses GPS atau pilih wilayah Anda di tab <strong>Lokasi Saya</strong>.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onNavigateLocation}
+            className="self-start sm:self-auto rounded-lg bg-rw-peat-900 px-3 py-1.5 font-semibold text-white hover:bg-rw-peat-800 transition-colors shadow-2xs text-[11px]"
+          >
+            Buka Lokasi Saya
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {sortedAssessments.map((a, idx) => {

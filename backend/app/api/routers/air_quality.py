@@ -24,13 +24,17 @@ _NEAREST_STATIONS_SQL = (
     "ST_Distance(s.geom::geography, "
     "ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography) / 1000.0 AS distance_km "
     "FROM monitoring_stations s WHERE s.geom IS NOT NULL "
+    "AND (s.geom && ST_MakeEnvelope(99.5, -2.5, 104.5, 3.0, 4326) OR s.name ILIKE '%Pekanbaru%' OR s.name ILIKE '%Dumai%' OR s.name ILIKE '%Bengkalis%' OR s.name ILIKE '%Siak%' OR s.name ILIKE '%Kampar%' OR s.name ILIKE '%Pelalawan%' OR s.name ILIKE '%Rokan%' OR s.name ILIKE '%Indragiri%') "
+    "AND s.name NOT ILIKE '%Jakarta%' AND s.name NOT ILIKE '%Malacca%' AND s.name NOT ILIKE '%Malaysia%' "
     "ORDER BY s.geom <-> ST_SetSRID(ST_MakePoint(:lon, :lat), 4326) LIMIT 3"
 )
 
 _AREA_STATIONS_SQL = (
     "SELECT s.id AS id, s.name AS name, s.external_id AS external_id, "
     "NULL::float AS distance_km FROM monitoring_stations s "
-    "WHERE s.area_id = :kab ORDER BY s.id LIMIT 50"
+    "WHERE s.area_id = :kab "
+    "AND s.name NOT ILIKE '%Jakarta%' AND s.name NOT ILIKE '%Malacca%' AND s.name NOT ILIKE '%Malaysia%' "
+    "ORDER BY s.id LIMIT 50"
 )
 
 _LATEST_SQL = (
@@ -52,6 +56,8 @@ _HISTORY_SQL = (
 _ALL_STATIONS_SQL = (
     "SELECT s.id AS id, s.name AS name, s.external_id AS external_id, "
     "NULL::float AS distance_km FROM monitoring_stations s "
+    "WHERE (s.geom && ST_MakeEnvelope(99.5, -2.5, 104.5, 3.0, 4326) OR s.name ILIKE '%Pekanbaru%' OR s.name ILIKE '%Dumai%' OR s.name ILIKE '%Bengkalis%' OR s.name ILIKE '%Siak%' OR s.name ILIKE '%Kampar%' OR s.name ILIKE '%Pelalawan%' OR s.name ILIKE '%Rokan%' OR s.name ILIKE '%Indragiri%') "
+    "AND s.name NOT ILIKE '%Jakarta%' AND s.name NOT ILIKE '%Malacca%' AND s.name NOT ILIKE '%Malaysia%' "
     "ORDER BY s.id LIMIT 50"
 )
 

@@ -72,13 +72,39 @@ export default function HomePage() {
     coords: { lat: number; lon: number } | null;
     kabupatenId: number | null;
     kabupatenName: string | null;
-  }>({
-    coords: null,
-    kabupatenId: null,
-    kabupatenName: null,
+  }>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("riauwatch_user_location");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed?.coords && parsed?.kabupatenName) {
+            return parsed;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return { coords: null, kabupatenId: null, kabupatenName: null };
   });
 
   const mapRef = useRef<HotspotMapHandle>(null);
+
+  const handleLocationUpdate = useCallback((loc: { lat: number; lon: number }) => {
+    const resolved = resolveRiauLocation(loc.lat, loc.lon);
+    const newLoc = {
+      coords: { lat: loc.lat, lon: loc.lon },
+      kabupatenId: resolved.kabupatenId,
+      kabupatenName: resolved.kabupatenName,
+    };
+    setUserLocation(newLoc);
+    try {
+      localStorage.setItem("riauwatch_user_location", JSON.stringify(newLoc));
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Load data on mount and when filters change
   useEffect(() => {
@@ -428,6 +454,7 @@ export default function HomePage() {
                 kabupatenId={filters.kabupatenId ? Number(filters.kabupatenId) : undefined}
                 near={userLocation.coords ? `${userLocation.coords.lat},${userLocation.coords.lon}` : undefined}
                 userKabupatenName={userLocation.kabupatenName ?? undefined}
+                onNavigateLocation={() => setActiveTab("location")}
               />
             </section>
           </div>
@@ -445,6 +472,7 @@ export default function HomePage() {
                 kabupatenId={filters.kabupatenId ? Number(filters.kabupatenId) : undefined}
                 userKabupatenId={userLocation.kabupatenId ?? undefined}
                 userKabupatenName={userLocation.kabupatenName ?? undefined}
+                onNavigateLocation={() => setActiveTab("location")}
               />
             </section>
           </div>
@@ -458,16 +486,7 @@ export default function HomePage() {
             tabIndex={0}
           >
             <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
-              <LocationPanel
-                onLocationFound={(loc) => {
-                  const resolved = resolveRiauLocation(loc.lat, loc.lon);
-                  setUserLocation({
-                    coords: { lat: loc.lat, lon: loc.lon },
-                    kabupatenId: resolved.kabupatenId,
-                    kabupatenName: resolved.kabupatenName,
-                  });
-                }}
-              />
+              <LocationPanel onLocationFound={handleLocationUpdate} />
             </section>
           </div>
         )}
