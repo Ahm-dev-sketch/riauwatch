@@ -8,7 +8,7 @@ import { StatusCard } from "@/components/StatusCard";
 import { HotspotMap, type HotspotMapHandle } from "@/components/HotspotMap";
 import { HotspotList } from "@/components/HotspotList";
 import { FilterPanel, type FilterState } from "@/components/FilterPanel";
-import { Legend } from "@/components/Legend";
+import { Legend, type LayerState } from "@/components/Legend";
 import { RiskBadge } from "@/components/RiskBadge";
 import { HotspotSummary } from "@/components/HotspotSummary";
 import { HotspotDisclaimer } from "@/components/HotspotDisclaimer";
@@ -19,10 +19,10 @@ import { LocationPanel } from "@/components/LocationPanel";
 import {
   getStatus,
   getHotspots,
-  getHotspotsSummary,
   getRiskCurrent,
   getAdministrativeAreas,
 } from "@/lib/api";
+import { fuseAndDeduplicateHotspots } from "@/lib/firms";
 import type {
   StatusResponse,
   HotspotsResponse,
@@ -57,7 +57,12 @@ export default function HomePage() {
     kabupatenId: "",
     minConfidence: "",
   });
-  const [layers, setLayers] = useState({ hotspots: true, boundaries: false });
+  const [layers, setLayers] = useState<LayerState>({
+    hotspots: true,
+    boundaries: false,
+    khg: true,
+    wind: true,
+  });
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [tileError, setTileError] = useState(false);
@@ -79,18 +84,37 @@ export default function HomePage() {
           min_confidence: filters.minConfidence || undefined,
         };
 
-        const [statusRes, hotspotsRes, summaryRes, riskRes, adminRes] = await Promise.all([
+        const [statusRes, hotspotsRes, riskRes, adminRes] = await Promise.all([
           getStatus(),
           getHotspots({ ...params, limit: 2000 }),
-          getHotspotsSummary(params),
           getRiskCurrent(),
           getAdministrativeAreas({ level: "kabupaten_kota", simplify: 0.01 }),
         ]);
 
         if (!cancelled) {
+          const fusion = fuseAndDeduplicateHotspots(hotspotsRes.features);
+          const fusedHotspots: HotspotsResponse = {
+            ...hotspotsRes,
+            count: fusion.fusedFeatures.length,
+            total_raw_count: fusion.totalRawDetections,
+            active_clusters_count: fusion.activeClustersCount,
+            features: fusion.fusedFeatures,
+          };
+
+          const fusedSummary: HotspotsSummaryResponse = {
+            total: fusion.activeClustersCount,
+            total_raw: fusion.totalRawDetections,
+            items: Object.entries(fusion.clusterCountsByKabupaten).map(([name, count], idx) => ({
+              kabupaten_id: idx + 1,
+              kabupaten_name: name,
+              count,
+              raw_count: fusion.rawCountsByKabupaten[name] || count,
+            })),
+          };
+
           setStatus(statusRes);
-          setHotspots(hotspotsRes);
-          setSummary(summaryRes);
+          setHotspots(fusedHotspots);
+          setSummary(fusedSummary);
           setRisk(riskRes);
           setAdminAreas(adminRes);
           setGeneratedAt(statusRes.generated_at);
@@ -110,7 +134,7 @@ export default function HomePage() {
     setFilters(newFilters);
   }, []);
 
-  const handleLayerToggle = useCallback((layer: "hotspots" | "boundaries") => {
+  const handleLayerToggle = useCallback((layer: keyof LayerState) => {
     setLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
   }, []);
 
@@ -341,7 +365,10 @@ export default function HomePage() {
                     hotspots={hotspots}
                     adminAreas={adminAreas}
                     selectedKabupatenId={filters.kabupatenId}
+                    showHotspots={layers.hotspots}
                     showBoundaries={layers.boundaries}
+                    showKHG={layers.khg}
+                    showWind={layers.wind}
                     loading={loading}
                     onHotspotClick={handleMapClick}
                     onTileStatusChange={handleTileStatusChange}
@@ -415,27 +442,39 @@ export default function HomePage() {
                 Status data:
               </span>
               <div className="flex flex-wrap items-center gap-3">
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1.5">
                   {status?.hotspots?.degraded ? (
-                    <span className="text-rw-orange-600" aria-hidden="true">⚠</span>
+                    <svg className="h-3.5 w-3.5 text-rw-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
                   ) : (
-                    <span className="text-rw-mangrove-700" aria-hidden="true">●</span>
+                    <span className="h-2 w-2 rounded-full bg-rw-mangrove-600" aria-hidden="true" />
                   )}
                   Hotspots
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1.5">
                   {status?.air_quality?.degraded ? (
-                    <span className="text-rw-orange-600" aria-hidden="true">⚠</span>
+                    <svg className="h-3.5 w-3.5 text-rw-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
                   ) : (
-                    <span className="text-rw-mangrove-700" aria-hidden="true">●</span>
+                    <span className="h-2 w-2 rounded-full bg-rw-mangrove-600" aria-hidden="true" />
                   )}
                   Kualitas Udara
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1.5">
                   {status?.weather?.degraded ? (
-                    <span className="text-rw-orange-600" aria-hidden="true">⚠</span>
+                    <svg className="h-3.5 w-3.5 text-rw-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
                   ) : (
-                    <span className="text-rw-mangrove-700" aria-hidden="true">●</span>
+                    <span className="h-2 w-2 rounded-full bg-rw-mangrove-600" aria-hidden="true" />
                   )}
                   Cuaca
                 </span>

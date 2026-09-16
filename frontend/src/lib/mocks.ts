@@ -14,10 +14,13 @@ import type {
   AdminAreasResponse,
   AdminAreaLookupResponse,
   MetaDataSourcesResponse,
+  HotspotFeature,
 } from "./types";
+import { fuseAndDeduplicateHotspots } from "./firms";
 
 const NOW = new Date().toISOString();
 const TWO_HOURS_AGO = new Date(Date.now() - 2 * 3600_000).toISOString();
+const FOUR_HOURS_AGO = new Date(Date.now() - 4 * 3600_000).toISOString();
 const SIX_HOURS_AGO = new Date(Date.now() - 6 * 3600_000).toISOString();
 const ONE_DAY_AGO = new Date(Date.now() - 24 * 3600_000).toISOString();
 
@@ -29,8 +32,8 @@ export const mockStatus: StatusResponse = {
     degraded: false,
   },
   air_quality: {
-    last_observation_at: SIX_HOURS_AGO,
-    last_successful_run_at: SIX_HOURS_AGO,
+    last_observation_at: TWO_HOURS_AGO,
+    last_successful_run_at: TWO_HOURS_AGO,
     degraded: false,
   },
   weather: {
@@ -40,445 +43,631 @@ export const mockStatus: StatusResponse = {
   },
 };
 
-// Realistic hotspot cluster locations in Riau:
-// - Rokan Hilir / Dumai area (active deforestation hotspot zone)
-// - Kampar (peatland area)
-// - Pelalawan
-// - Siak
-// - Kuantan Singingi
-export const mockHotspots: HotspotsResponse = {
+/**
+ * Raw satellite detections from VIIRS and MODIS sensor streams.
+ * Includes overlapping pairs (within 1 km and <= 3 hours) to demonstrate
+ * the spatio-temporal deduplication and sensor fusion engine.
+ */
+export const mockRawHotspots: HotspotsResponse = {
   type: "FeatureCollection",
   disclaimer:
     "Hotspots are satellite heat indications and are NOT confirmed fires. Ground verification is required; absence of hotspots does not guarantee absence of fire.",
-  count: 14,
+  count: 20,
   features: [
+    // 1. Rokan Hilir — VIIRS detection
     {
       type: "Feature",
-      geometry: { type: "Point", coordinates: [101.4345, 1.6521] },
+      geometry: { type: "Point", coordinates: [100.8051, 1.6814] },
       properties: {
-        satellite: "VIIRS",
+        id: 1,
+        satellite: "NOAA-20",
         instrument: "VIIRS",
         confidence: "nominal",
         confidence_value: 65,
         daynight: "D",
+        frp: 14.2,
         acquired_at: TWO_HOURS_AGO,
         area_name: "Kab. Rokan Hilir",
+        kabupaten_id: 1,
         hotspot_indication: true,
       },
     },
+    // 2. Rokan Hilir — MODIS detection overlapping with item #1 (distance ~0.4 km, same window -> MERGED)
     {
       type: "Feature",
-      geometry: { type: "Point", coordinates: [101.4512, 1.6388] },
+      geometry: { type: "Point", coordinates: [100.8080, 1.6830] },
       properties: {
-        satellite: "VIIRS",
-        instrument: "VIIRS",
-        confidence: "nominal",
-        confidence_value: 58,
-        daynight: "D",
-        acquired_at: TWO_HOURS_AGO,
-        area_name: "Kab. Rokan Hilir",
-        hotspot_indication: true,
-      },
-    },
-    {
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [101.2750, 1.7100] },
-      properties: {
-        satellite: "VIIRS",
-        instrument: "VIIRS",
-        confidence: "high",
-        confidence_value: 82,
-        daynight: "D",
-        acquired_at: ONE_DAY_AGO,
-        area_name: "Kota Dumai",
-        hotspot_indication: true,
-      },
-    },
-    {
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [101.3900, 0.4200] },
-      properties: {
-        satellite: "VIIRS",
-        instrument: "VIIRS",
-        confidence: "nominal",
-        confidence_value: 55,
-        daynight: "D",
-        acquired_at: TWO_HOURS_AGO,
-        area_name: "Kab. Kampar",
-        hotspot_indication: true,
-      },
-    },
-    {
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [101.3850, 0.4050] },
-      properties: {
-        satellite: "MODIS",
-        instrument: "MODIS",
-        confidence: "low",
-        confidence_value: 30,
-        daynight: "D",
-        acquired_at: SIX_HOURS_AGO,
-        area_name: "Kab. Kampar",
-        hotspot_indication: true,
-      },
-    },
-    {
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [101.8700, -0.2050] },
-      properties: {
-        satellite: "VIIRS",
-        instrument: "VIIRS",
-        confidence: "high",
-        confidence_value: 88,
-        daynight: "D",
-        acquired_at: TWO_HOURS_AGO,
-        area_name: "Kab. Pelalawan",
-        hotspot_indication: true,
-      },
-    },
-    {
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [101.8900, -0.2200] },
-      properties: {
-        satellite: "VIIRS",
-        instrument: "VIIRS",
-        confidence: "nominal",
-        confidence_value: 62,
-        daynight: "D",
-        acquired_at: TWO_HOURS_AGO,
-        area_name: "Kab. Pelalawan",
-        hotspot_indication: true,
-      },
-    },
-    {
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [102.1500, 0.8100] },
-      properties: {
-        satellite: "VIIRS",
-        instrument: "VIIRS",
-        confidence: "nominal",
-        confidence_value: 50,
-        daynight: "D",
-        acquired_at: ONE_DAY_AGO,
-        area_name: "Kab. Siak",
-        hotspot_indication: true,
-      },
-    },
-    {
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [101.6200, -0.5200] },
-      properties: {
-        satellite: "MODIS",
-        instrument: "MODIS",
-        confidence: "high",
-        confidence_value: 78,
-        daynight: "D",
-        acquired_at: TWO_HOURS_AGO,
-        area_name: "Kab. Kuantan Singingi",
-        hotspot_indication: true,
-      },
-    },
-    {
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [101.6000, -0.5400] },
-      properties: {
-        satellite: "MODIS",
+        id: 2,
+        satellite: "Terra",
         instrument: "MODIS",
         confidence: "nominal",
         confidence_value: 60,
         daynight: "D",
+        frp: 18.5,
         acquired_at: TWO_HOURS_AGO,
-        area_name: "Kab. Kuantan Singingi",
+        area_name: "Kab. Rokan Hilir",
+        kabupaten_id: 1,
         hotspot_indication: true,
       },
     },
+    // 3. Dumai — VIIRS detection (high confidence)
     {
       type: "Feature",
-      geometry: { type: "Point", coordinates: [102.3300, 0.3800] },
+      geometry: { type: "Point", coordinates: [101.4500, 1.6200] },
       properties: {
-        satellite: "VIIRS",
+        id: 3,
+        satellite: "NOAA-20",
         instrument: "VIIRS",
-        confidence: "low",
-        confidence_value: 25,
-        daynight: "N",
-        acquired_at: SIX_HOURS_AGO,
-        area_name: "Kab. Indragiri Hulu",
+        confidence: "high",
+        confidence_value: 86,
+        daynight: "D",
+        frp: 28.4,
+        acquired_at: FOUR_HOURS_AGO,
+        area_name: "Kota Dumai",
+        kabupaten_id: 2,
         hotspot_indication: true,
       },
     },
+    // 4. Kampar — VIIRS detection
     {
       type: "Feature",
-      geometry: { type: "Point", coordinates: [100.5300, 0.2500] },
+      geometry: { type: "Point", coordinates: [101.3900, 0.4200] },
       properties: {
-        satellite: "VIIRS",
+        id: 4,
+        satellite: "Suomi NPP",
         instrument: "VIIRS",
         confidence: "nominal",
         confidence_value: 55,
         daynight: "D",
+        frp: 9.1,
         acquired_at: TWO_HOURS_AGO,
-        area_name: "Kab. Rokan Hulu",
+        area_name: "Kab. Kampar",
+        kabupaten_id: 3,
         hotspot_indication: true,
       },
     },
+    // 5. Kampar — MODIS detection overlapping with item #4
     {
       type: "Feature",
-      geometry: { type: "Point", coordinates: [100.5500, 0.2700] },
+      geometry: { type: "Point", coordinates: [101.3850, 0.4180] },
       properties: {
-        satellite: "VIIRS",
+        id: 5,
+        satellite: "Aqua",
+        instrument: "MODIS",
+        confidence: "nominal",
+        confidence_value: 52,
+        daynight: "D",
+        frp: 11.2,
+        acquired_at: TWO_HOURS_AGO,
+        area_name: "Kab. Kampar",
+        kabupaten_id: 3,
+        hotspot_indication: true,
+      },
+    },
+    // 6. Pelalawan — VIIRS High (Peatland sector)
+    {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [101.8700, -0.2050] },
+      properties: {
+        id: 6,
+        satellite: "NOAA-20",
         instrument: "VIIRS",
         confidence: "high",
-        confidence_value: 75,
+        confidence_value: 92,
         daynight: "D",
+        frp: 45.8,
         acquired_at: TWO_HOURS_AGO,
-        area_name: "Kab. Rokan Hulu",
+        area_name: "Kab. Pelalawan",
+        kabupaten_id: 4,
         hotspot_indication: true,
       },
     },
+    // 7. Pelalawan — MODIS detection overlapping with item #6
     {
       type: "Feature",
-      geometry: { type: "Point", coordinates: [101.7600, 1.8800] },
+      geometry: { type: "Point", coordinates: [101.8740, -0.2080] },
       properties: {
-        satellite: "VIIRS",
-        instrument: "VIIRS",
-        confidence: "nominal",
-        confidence_value: 48,
+        id: 7,
+        satellite: "Terra",
+        instrument: "MODIS",
+        confidence: "high",
+        confidence_value: 84,
         daynight: "D",
-        acquired_at: ONE_DAY_AGO,
-        area_name: "Kab. Bengkalis",
+        frp: 38.0,
+        acquired_at: TWO_HOURS_AGO,
+        area_name: "Kab. Pelalawan",
+        kabupaten_id: 4,
         hotspot_indication: true,
       },
     },
+    // 8. Pelalawan — Second cluster
+    {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [102.4200, 0.3500] },
+      properties: {
+        id: 8,
+        satellite: "Suomi NPP",
+        instrument: "VIIRS",
+        confidence: "nominal",
+        confidence_value: 68,
+        daynight: "D",
+        frp: 21.0,
+        acquired_at: SIX_HOURS_AGO,
+        area_name: "Kab. Pelalawan",
+        kabupaten_id: 4,
+        hotspot_indication: true,
+      },
+    },
+    // 9. Siak — Peatland cluster
+    {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [101.8500, 0.8200] },
+      properties: {
+        id: 9,
+        satellite: "NOAA-20",
+        instrument: "VIIRS",
+        confidence: "nominal",
+        confidence_value: 58,
+        daynight: "D",
+        frp: 12.3,
+        acquired_at: TWO_HOURS_AGO,
+        area_name: "Kab. Siak",
+        kabupaten_id: 5,
+        hotspot_indication: true,
+      },
+    },
+    // 10. Kuantan Singingi — High confidence
+    {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [101.5200, -0.5800] },
+      properties: {
+        id: 10,
+        satellite: "NOAA-20",
+        instrument: "VIIRS",
+        confidence: "high",
+        confidence_value: 85,
+        daynight: "D",
+        frp: 34.2,
+        acquired_at: TWO_HOURS_AGO,
+        area_name: "Kab. Kuantan Singingi",
+        kabupaten_id: 6,
+        hotspot_indication: true,
+      },
+    },
+    // 11. Indragiri Hulu — High cluster
+    {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [102.3500, -0.4200] },
+      properties: {
+        id: 11,
+        satellite: "Suomi NPP",
+        instrument: "VIIRS",
+        confidence: "high",
+        confidence_value: 88,
+        daynight: "D",
+        frp: 41.5,
+        acquired_at: TWO_HOURS_AGO,
+        area_name: "Kab. Indragiri Hulu",
+        kabupaten_id: 7,
+        hotspot_indication: true,
+      },
+    },
+    // 12. Indragiri Hilir — Heavy peatland fires
+    {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [103.1200, -0.4500] },
+      properties: {
+        id: 12,
+        satellite: "NOAA-20",
+        instrument: "VIIRS",
+        confidence: "high",
+        confidence_value: 95,
+        daynight: "D",
+        frp: 62.4,
+        acquired_at: TWO_HOURS_AGO,
+        area_name: "Kab. Indragiri Hilir",
+        kabupaten_id: 10,
+        hotspot_indication: true,
+      },
+    },
+    // 13. Indragiri Hilir — Overlapping MODIS
+    {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [103.1240, -0.4520] },
+      properties: {
+        id: 13,
+        satellite: "Aqua",
+        instrument: "MODIS",
+        confidence: "high",
+        confidence_value: 85,
+        daynight: "D",
+        frp: 54.0,
+        acquired_at: TWO_HOURS_AGO,
+        area_name: "Kab. Indragiri Hilir",
+        kabupaten_id: 10,
+        hotspot_indication: true,
+      },
+    },
+    // 14. Rokan Hulu
+    {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [100.3200, 0.8500] },
+      properties: {
+        id: 14,
+        satellite: "Suomi NPP",
+        instrument: "VIIRS",
+        confidence: "nominal",
+        confidence_value: 60,
+        daynight: "D",
+        frp: 14.0,
+        acquired_at: TWO_HOURS_AGO,
+        area_name: "Kab. Rokan Hulu",
+        kabupaten_id: 8,
+        hotspot_indication: true,
+      },
+    },
+    // 15. Bengkalis (Duri / Mandau)
+    {
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [101.2200, 1.2800] },
+      properties: {
+        id: 15,
+        satellite: "NOAA-20",
+        instrument: "VIIRS",
+        confidence: "nominal",
+        confidence_value: 64,
+        daynight: "D",
+        frp: 16.8,
+        acquired_at: ONE_DAY_AGO,
+        area_name: "Kab. Bengkalis",
+        kabupaten_id: 9,
+        hotspot_indication: true,
+      },
+    },
+    // 16. Pekanbaru — Isolated thermal observation
     {
       type: "Feature",
       geometry: { type: "Point", coordinates: [101.4478, 0.5071] },
       properties: {
-        satellite: "VIIRS",
+        id: 16,
+        satellite: "NOAA-20",
         instrument: "VIIRS",
         confidence: "nominal",
-        confidence_value: 62,
+        confidence_value: 52,
         daynight: "D",
+        frp: 7.2,
         acquired_at: TWO_HOURS_AGO,
         area_name: "Kota Pekanbaru",
+        kabupaten_id: 11,
         hotspot_indication: true,
       },
     },
   ],
 };
 
-export const mockHotspotsSummary: HotspotsSummaryResponse = {
-  total: 15,
-  items: [
-    { kabupaten_id: 11, kabupaten_name: "Kota Pekanbaru", count: 1 },
-    { kabupaten_id: 2, kabupaten_name: "Kota Dumai", count: 1 },
-    { kabupaten_id: 1, kabupaten_name: "Kab. Rokan Hilir", count: 2 },
-    { kabupaten_id: 3, kabupaten_name: "Kab. Kampar", count: 2 },
-    { kabupaten_id: 4, kabupaten_name: "Kab. Pelalawan", count: 2 },
-    { kabupaten_id: 5, kabupaten_name: "Kab. Siak", count: 1 },
-    { kabupaten_id: 6, kabupaten_name: "Kab. Kuantan Singingi", count: 2 },
-    { kabupaten_id: 7, kabupaten_name: "Kab. Indragiri Hulu", count: 1 },
-    { kabupaten_id: 8, kabupaten_name: "Kab. Rokan Hulu", count: 2 },
-    { kabupaten_id: 9, kabupaten_name: "Kab. Bengkalis", count: 1 },
-    { kabupaten_id: 10, kabupaten_name: "Kab. Indragiri Hilir", count: 0 },
-    { kabupaten_id: 12, kabupaten_name: "Kab. Kepulauan Meranti", count: 0 },
-  ],
+// Process initial fusion
+const initialFusion = fuseAndDeduplicateHotspots(mockRawHotspots.features);
+
+export const mockHotspots: HotspotsResponse = {
+  type: "FeatureCollection",
+  disclaimer:
+    "Hotspots are satellite heat indications and are NOT confirmed fires. Ground verification is required; absence of hotspots does not guarantee absence of fire.",
+  count: initialFusion.fusedFeatures.length,
+  total_raw_count: initialFusion.totalRawDetections,
+  active_clusters_count: initialFusion.activeClustersCount,
+  features: initialFusion.fusedFeatures,
 };
+
+export const mockHotspotsSummary: HotspotsSummaryResponse = {
+  total: initialFusion.activeClustersCount,
+  total_raw: initialFusion.totalRawDetections,
+  items: Object.entries(initialFusion.clusterCountsByKabupaten).map(([name, count], idx) => ({
+    kabupaten_id: idx + 1,
+    kabupaten_name: name,
+    count,
+    raw_count: initialFusion.rawCountsByKabupaten[name] || count,
+  })),
+};
+
+// ---------------------------------------------------------------------------
+// Air Quality — Official Riau SPKUA Stations
+// ---------------------------------------------------------------------------
 
 export const mockAirQuality: AirQualityLatestResponse = {
   stations: [
     {
       station_id: 1,
       station_name: "Stasiun Pekanbaru - Tampan",
-      external_id: "openaq-pek-001",
-      distance_km: 0,
+      external_id: "spkua-pku-01",
+      distance_km: 0.6,
       observations: [
         {
           pollutant: "pm25",
-          value: 38.5,
-          unit: "ug/m3",
-          observed_at: SIX_HOURS_AGO,
-          age_seconds: 21600,
+          value: 45.5,
+          unit: "µg/m³",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
         },
         {
           pollutant: "pm10",
-          value: 52.1,
-          unit: "ug/m3",
-          observed_at: SIX_HOURS_AGO,
-          age_seconds: 21600,
+          value: 62.1,
+          unit: "µg/m³",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
         },
       ],
-      category: null,
+      category: "Sedang",
     },
     {
       station_id: 2,
       station_name: "Stasiun Pekanbaru - Sukajadi",
-      external_id: "openaq-pek-002",
+      external_id: "spkua-pku-02",
       distance_km: 4.2,
       observations: [
         {
           pollutant: "pm25",
-          value: 41.2,
-          unit: "ug/m3",
+          value: 48.2,
+          unit: "µg/m³",
           observed_at: TWO_HOURS_AGO,
           age_seconds: 7200,
         },
         {
           pollutant: "pm10",
-          value: 56.4,
-          unit: "ug/m3",
+          value: 66.4,
+          unit: "µg/m³",
           observed_at: TWO_HOURS_AGO,
           age_seconds: 7200,
         },
       ],
-      category: null,
+      category: "Sedang",
     },
     {
       station_id: 3,
       station_name: "Stasiun Dumai - Pelintung",
-      external_id: "openaq-dum-001",
+      external_id: "spkua-dum-01",
       distance_km: 120.3,
       observations: [
         {
           pollutant: "pm25",
-          value: 55.2,
-          unit: "ug/m3",
+          value: 32.0,
+          unit: "µg/m³",
           observed_at: TWO_HOURS_AGO,
           age_seconds: 7200,
         },
         {
           pollutant: "pm10",
-          value: 71.0,
-          unit: "ug/m3",
+          value: 48.0,
+          unit: "µg/m³",
           observed_at: TWO_HOURS_AGO,
           age_seconds: 7200,
         },
       ],
-      category: null,
+      category: "Sedang",
     },
     {
       station_id: 4,
       station_name: "Stasiun Duri / Mandau - Bengkalis",
-      external_id: "openaq-bks-001",
+      external_id: "spkua-bks-01",
       distance_km: 95.8,
       observations: [
         {
           pollutant: "pm25",
-          value: 62.8,
-          unit: "ug/m3",
+          value: 58.0,
+          unit: "µg/m³",
           observed_at: TWO_HOURS_AGO,
           age_seconds: 7200,
         },
         {
           pollutant: "pm10",
-          value: 84.5,
-          unit: "ug/m3",
+          value: 78.5,
+          unit: "µg/m³",
           observed_at: TWO_HOURS_AGO,
           age_seconds: 7200,
         },
       ],
-      category: null,
+      category: "Tidak Sehat",
     },
     {
       station_id: 5,
       station_name: "Stasiun Siak Sri Indrapura",
-      external_id: "openaq-siak-001",
+      external_id: "spkua-siak-01",
       distance_km: 68.4,
       observations: [
         {
           pollutant: "pm25",
           value: 28.4,
-          unit: "ug/m3",
+          unit: "µg/m³",
           observed_at: TWO_HOURS_AGO,
           age_seconds: 7200,
         },
         {
           pollutant: "pm10",
           value: 41.2,
-          unit: "ug/m3",
+          unit: "µg/m³",
           observed_at: TWO_HOURS_AGO,
           age_seconds: 7200,
         },
       ],
-      category: null,
+      category: "Sedang",
     },
     {
       station_id: 6,
       station_name: "Stasiun Kampar - Bangkinang",
-      external_id: "openaq-kmp-001",
+      external_id: "spkua-kmp-01",
       distance_km: 54.1,
       observations: [
         {
           pollutant: "pm25",
           value: 24.1,
-          unit: "ug/m3",
+          unit: "µg/m³",
           observed_at: TWO_HOURS_AGO,
           age_seconds: 7200,
         },
         {
           pollutant: "pm10",
           value: 36.8,
-          unit: "ug/m3",
+          unit: "µg/m³",
           observed_at: TWO_HOURS_AGO,
           age_seconds: 7200,
         },
       ],
-      category: null,
+      category: "Sedang",
     },
     {
       station_id: 7,
       station_name: "Stasiun Pelalawan - Pangkalan Kerinci",
-      external_id: "openaq-plw-001",
+      external_id: "spkua-plw-01",
       distance_km: 72.0,
       observations: [
         {
           pollutant: "pm25",
           value: 68.9,
-          unit: "ug/m3",
+          unit: "µg/m³",
           observed_at: TWO_HOURS_AGO,
           age_seconds: 7200,
         },
         {
           pollutant: "pm10",
           value: 92.4,
-          unit: "ug/m3",
+          unit: "µg/m³",
           observed_at: TWO_HOURS_AGO,
           age_seconds: 7200,
         },
       ],
-      category: null,
+      category: "Tidak Sehat",
+    },
+    {
+      station_id: 8,
+      station_name: "Stasiun Rokan Hilir - Bagan Siapi-api",
+      external_id: "spkua-rohil-01",
+      distance_km: 145.0,
+      observations: [
+        {
+          pollutant: "pm25",
+          value: 48.0,
+          unit: "µg/m³",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+        {
+          pollutant: "pm10",
+          value: 63.5,
+          unit: "µg/m³",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+      ],
+      category: "Sedang",
+    },
+    {
+      station_id: 9,
+      station_name: "Stasiun Indragiri Hulu - Rengat",
+      external_id: "spkua-inhu-01",
+      distance_km: 130.2,
+      observations: [
+        {
+          pollutant: "pm25",
+          value: 52.0,
+          unit: "µg/m³",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+        {
+          pollutant: "pm10",
+          value: 71.2,
+          unit: "µg/m³",
+          observed_at: TWO_HOURS_AGO,
+          age_seconds: 7200,
+        },
+      ],
+      category: "Sedang",
     },
   ],
 };
 
+// ---------------------------------------------------------------------------
+// Weather — Current & Forecast with Cloud Cover & Wind Vectors
+// ---------------------------------------------------------------------------
+
 export const mockWeather: WeatherCurrentResponse = {
-  area_id: 1,
-  area_name: "Kab. Kampar",
+  area_id: 11,
+  area_name: "Kota Pekanbaru",
   observation: {
     valid_time: TWO_HOURS_AGO,
     is_forecast: false,
-    temperature_c: 31.2,
-    humidity_pct: 78.5,
+    temperature_c: 32.0,
+    humidity_pct: 58.0,
     precipitation_mm: 0.0,
-    wind_speed_kmh: 8.3,
-    wind_direction_deg: 225,
+    wind_speed_kmh: 12.5,
+    wind_direction_deg: 165, // Dari Tenggara/Selatan
+    cloud_cover_pct: 35.0,
+    soil_moisture_m3: 0.13,
     age_seconds: 7200,
   },
 };
 
+function generateForecast(hours: number): WeatherForecastResponse["forecast"] {
+  const now = Date.now();
+  const forecast: WeatherForecastResponse["forecast"] = [];
+  for (let i = 1; i <= hours; i++) {
+    const t = new Date(now + i * 3600_000);
+    const hourOfDay = t.getHours();
+    const tempBase = 28 + Math.sin(((hourOfDay - 6) * Math.PI) / 12) * 4;
+    const humidity = 75 - Math.sin(((hourOfDay - 6) * Math.PI) / 12) * 15;
+    const precipChance = hourOfDay >= 14 && hourOfDay <= 17 ? 0.3 : 0.05;
+    const precip = Math.random() < precipChance ? Math.round(Math.random() * 6 * 10) / 10 : 0;
+    const clouds = Math.round((30 + Math.sin(i * 0.5) * 20) * 10) / 10;
+
+    forecast.push({
+      valid_time: t.toISOString(),
+      is_forecast: true,
+      temperature_c: Math.round(tempBase * 10) / 10,
+      humidity_pct: Math.round(humidity * 10) / 10,
+      precipitation_mm: precip,
+      wind_speed_kmh: Math.round((8 + Math.random() * 8) * 10) / 10,
+      wind_direction_deg: 160 + Math.round(Math.random() * 20 - 10),
+      cloud_cover_pct: clouds,
+      soil_moisture_m3: 0.14,
+      age_seconds: null,
+    });
+  }
+  return forecast;
+}
+
+export const mockWeatherForecast: WeatherForecastResponse = {
+  area_id: 11,
+  area_name: "Kota Pekanbaru",
+  forecast: generateForecast(24),
+};
+
+// ---------------------------------------------------------------------------
+// Modul 2: Arsitektur Dual-Index Risiko per Kabupaten (12 Wilayah Riau)
+// Memisahkan Potensi Kebakaran (Fire Hazard) dan Paparan Kualitas Udara (Air Quality Hazard)
+// ---------------------------------------------------------------------------
+
 export const mockRisk: RiskCurrentResponse = {
   assessments: [
     {
-      area_id: 1,
-      area_name: "Kab. Rokan Hilir",
+      area_id: 11,
+      area_name: "Kota Pekanbaru",
       assessed_for: TWO_HOURS_AGO,
       horizon: "48h",
       model_version: "rules-v0.1",
-      risk_level: "HIGH",
-      score: 0.78,
+      risk_level: "LOW",
+      score: 18.0,
+      fire_hazard_index: 18.0,
+      fire_risk_level: "Rendah",
+      air_quality_hazard_index: 68.0,
+      air_quality_level: "Tidak Sehat",
+      pm25_value: 45.5,
+      cloud_cover_pct: 35.0,
       factors: {
-        hotspot_count_7d: 12,
-        recent_trend: "increasing",
-        dry_spell_days: 5,
-        vegetation_condition: "stressed",
+        hotspot_density_48h: 0.0,
+        rainfall_7d: 31.8,
+        humidity_24h: 69.9,
+        temperature_24h_max: 33.7,
+        wind_24h_mean: 8.5,
+        fuel_index: 0.13,
       },
     },
     {
@@ -488,27 +677,20 @@ export const mockRisk: RiskCurrentResponse = {
       horizon: "48h",
       model_version: "rules-v0.1",
       risk_level: "MEDIUM",
-      score: 0.52,
+      score: 28.0,
+      fire_hazard_index: 28.0,
+      fire_risk_level: "Sedang",
+      air_quality_hazard_index: 55.0,
+      air_quality_level: "Sedang",
+      pm25_value: 32.0,
+      cloud_cover_pct: 40.0,
       factors: {
-        hotspot_count_7d: 4,
-        recent_trend: "stable",
-        dry_spell_days: 3,
-        vegetation_condition: "moderate",
-      },
-    },
-    {
-      area_id: 3,
-      area_name: "Kab. Kampar",
-      assessed_for: TWO_HOURS_AGO,
-      horizon: "48h",
-      model_version: "rules-v0.1",
-      risk_level: "MEDIUM",
-      score: 0.45,
-      factors: {
-        hotspot_count_7d: 3,
-        recent_trend: "stable",
-        dry_spell_days: 2,
-        vegetation_condition: "moderate",
+        hotspot_density_48h: 0.01,
+        rainfall_7d: 46.6,
+        humidity_24h: 73.2,
+        temperature_24h_max: 33.3,
+        wind_24h_mean: 7.8,
+        fuel_index: 0.27,
       },
     },
     {
@@ -518,12 +700,89 @@ export const mockRisk: RiskCurrentResponse = {
       horizon: "48h",
       model_version: "rules-v0.1",
       risk_level: "HIGH",
-      score: 0.82,
+      score: 82.0,
+      fire_hazard_index: 82.0,
+      fire_risk_level: "Tinggi",
+      air_quality_hazard_index: 78.0,
+      air_quality_level: "Tidak Sehat",
+      pm25_value: 68.9,
+      cloud_cover_pct: 20.0,
       factors: {
-        hotspot_count_7d: 15,
-        recent_trend: "increasing",
-        dry_spell_days: 7,
-        vegetation_condition: "stressed",
+        hotspot_density_48h: 0.08,
+        rainfall_7d: 14.2,
+        humidity_24h: 58.0,
+        temperature_24h_max: 34.8,
+        wind_24h_mean: 14.0,
+        fuel_index: 0.11,
+      },
+    },
+    {
+      area_id: 10,
+      area_name: "Kab. Indragiri Hilir",
+      assessed_for: TWO_HOURS_AGO,
+      horizon: "48h",
+      model_version: "rules-v0.1",
+      risk_level: "HIGH",
+      score: 88.0,
+      fire_hazard_index: 88.0,
+      fire_risk_level: "Ekstrem",
+      air_quality_hazard_index: 75.0,
+      air_quality_level: "Tidak Sehat",
+      pm25_value: 65.0,
+      cloud_cover_pct: 25.0,
+      factors: {
+        hotspot_density_48h: 0.12,
+        rainfall_7d: 11.5,
+        humidity_24h: 56.4,
+        temperature_24h_max: 35.0,
+        wind_24h_mean: 15.8,
+        fuel_index: 0.10,
+      },
+    },
+    {
+      area_id: 7,
+      area_name: "Kab. Indragiri Hulu",
+      assessed_for: TWO_HOURS_AGO,
+      horizon: "48h",
+      model_version: "rules-v0.1",
+      risk_level: "HIGH",
+      score: 76.0,
+      fire_hazard_index: 76.0,
+      fire_risk_level: "Tinggi",
+      air_quality_hazard_index: 62.0,
+      air_quality_level: "Tidak Sehat",
+      pm25_value: 52.0,
+      cloud_cover_pct: 30.0,
+      factors: {
+        hotspot_density_48h: 0.06,
+        rainfall_7d: 18.0,
+        humidity_24h: 62.0,
+        temperature_24h_max: 34.2,
+        wind_24h_mean: 13.6,
+        fuel_index: 0.14,
+      },
+    },
+    {
+      area_id: 9,
+      area_name: "Kab. Bengkalis",
+      assessed_for: TWO_HOURS_AGO,
+      horizon: "48h",
+      model_version: "rules-v0.1",
+      risk_level: "MEDIUM",
+      score: 42.0,
+      fire_hazard_index: 42.0,
+      fire_risk_level: "Sedang",
+      air_quality_hazard_index: 72.0,
+      air_quality_level: "Tidak Sehat",
+      pm25_value: 58.0,
+      cloud_cover_pct: 45.0,
+      factors: {
+        hotspot_density_48h: 0.02,
+        rainfall_7d: 28.5,
+        humidity_24h: 68.0,
+        temperature_24h_max: 33.6,
+        wind_24h_mean: 16.0,
+        fuel_index: 0.22,
       },
     },
     {
@@ -533,27 +792,135 @@ export const mockRisk: RiskCurrentResponse = {
       horizon: "48h",
       model_version: "rules-v0.1",
       risk_level: "LOW",
-      score: 0.22,
+      score: 22.0,
+      fire_hazard_index: 22.0,
+      fire_risk_level: "Rendah",
+      air_quality_hazard_index: 40.0,
+      air_quality_level: "Sedang",
+      pm25_value: 28.4,
+      cloud_cover_pct: 50.0,
       factors: {
-        hotspot_count_7d: 1,
-        recent_trend: "decreasing",
-        dry_spell_days: 1,
-        vegetation_condition: "good",
+        hotspot_density_48h: 0.01,
+        rainfall_7d: 47.3,
+        humidity_24h: 74.5,
+        temperature_24h_max: 33.1,
+        wind_24h_mean: 7.6,
+        fuel_index: 0.35,
       },
     },
     {
-      area_id: 11,
-      area_name: "Kota Pekanbaru",
+      area_id: 3,
+      area_name: "Kab. Kampar",
       assessed_for: TWO_HOURS_AGO,
       horizon: "48h",
       model_version: "rules-v0.1",
       risk_level: "LOW",
-      score: 0.18,
+      score: 25.0,
+      fire_hazard_index: 25.0,
+      fire_risk_level: "Sedang",
+      air_quality_hazard_index: 35.0,
+      air_quality_level: "Sedang",
+      pm25_value: 24.1,
+      cloud_cover_pct: 30.0,
       factors: {
-        hotspot_count_7d: 1,
-        recent_trend: "stable",
-        dry_spell_days: 1,
-        vegetation_condition: "good",
+        hotspot_density_48h: 0.01,
+        rainfall_7d: 47.1,
+        humidity_24h: 69.7,
+        temperature_24h_max: 31.9,
+        wind_24h_mean: 9.2,
+        fuel_index: 0.26,
+      },
+    },
+    {
+      area_id: 1,
+      area_name: "Kab. Rokan Hilir",
+      assessed_for: TWO_HOURS_AGO,
+      horizon: "48h",
+      model_version: "rules-v0.1",
+      risk_level: "MEDIUM",
+      score: 54.0,
+      fire_hazard_index: 54.0,
+      fire_risk_level: "Tinggi",
+      air_quality_hazard_index: 58.0,
+      air_quality_level: "Tidak Sehat",
+      pm25_value: 48.0,
+      cloud_cover_pct: 35.0,
+      factors: {
+        hotspot_density_48h: 0.03,
+        rainfall_7d: 26.0,
+        humidity_24h: 64.0,
+        temperature_24h_max: 34.0,
+        wind_24h_mean: 13.0,
+        fuel_index: 0.18,
+      },
+    },
+    {
+      area_id: 8,
+      area_name: "Kab. Rokan Hulu",
+      assessed_for: TWO_HOURS_AGO,
+      horizon: "48h",
+      model_version: "rules-v0.1",
+      risk_level: "LOW",
+      score: 28.0,
+      fire_hazard_index: 28.0,
+      fire_risk_level: "Sedang",
+      air_quality_hazard_index: 30.0,
+      air_quality_level: "Baik",
+      pm25_value: 18.0,
+      cloud_cover_pct: 40.0,
+      factors: {
+        hotspot_density_48h: 0.01,
+        rainfall_7d: 48.2,
+        humidity_24h: 74.5,
+        temperature_24h_max: 32.7,
+        wind_24h_mean: 7.1,
+        fuel_index: 0.40,
+      },
+    },
+    {
+      area_id: 6,
+      area_name: "Kab. Kuantan Singingi",
+      assessed_for: TWO_HOURS_AGO,
+      horizon: "48h",
+      model_version: "rules-v0.1",
+      risk_level: "MEDIUM",
+      score: 65.0,
+      fire_hazard_index: 65.0,
+      fire_risk_level: "Tinggi",
+      air_quality_hazard_index: 50.0,
+      air_quality_level: "Sedang",
+      pm25_value: 36.0,
+      cloud_cover_pct: 28.0,
+      factors: {
+        hotspot_density_48h: 0.04,
+        rainfall_7d: 21.0,
+        humidity_24h: 66.0,
+        temperature_24h_max: 33.8,
+        wind_24h_mean: 11.2,
+        fuel_index: 0.20,
+      },
+    },
+    {
+      area_id: 12,
+      area_name: "Kab. Kepulauan Meranti",
+      assessed_for: TWO_HOURS_AGO,
+      horizon: "48h",
+      model_version: "rules-v0.1",
+      risk_level: "LOW",
+      score: 15.0,
+      fire_hazard_index: 15.0,
+      fire_risk_level: "Rendah",
+      air_quality_hazard_index: 25.0,
+      air_quality_level: "Sedang",
+      pm25_value: 20.0,
+      cloud_cover_pct: 55.0,
+      factors: {
+        hotspot_density_48h: 0.0,
+        rainfall_7d: 48.6,
+        humidity_24h: 77.0,
+        temperature_24h_max: 33.0,
+        wind_24h_mean: 8.2,
+        fuel_index: 0.38,
       },
     },
   ],
@@ -561,17 +928,19 @@ export const mockRisk: RiskCurrentResponse = {
 };
 
 // ---------------------------------------------------------------------------
-// Air Quality History (Dynamic 24h per station and pollutant for chart)
+// Air Quality History
 // ---------------------------------------------------------------------------
 
 const STATION_BASE_PM25: Record<number, number> = {
-  1: 38.5, // Pekanbaru Tampan
-  2: 41.2, // Pekanbaru Sukajadi
-  3: 55.2, // Dumai Pelintung
-  4: 62.8, // Duri / Mandau
+  1: 45.5, // Pekanbaru Tampan
+  2: 48.2, // Pekanbaru Sukajadi
+  3: 32.0, // Dumai Pelintung
+  4: 58.0, // Duri / Mandau
   5: 28.4, // Siak Sri Indrapura
   6: 24.1, // Kampar Bangkinang
   7: 68.9, // Pelalawan
+  8: 48.0, // Rokan Hilir
+  9: 52.0, // Indragiri Hulu
 };
 
 export function getMockAirQualityHistory(
@@ -587,7 +956,6 @@ export function getMockAirQualityHistory(
   for (let i = 0; i < hours; i++) {
     const t = new Date(now - (hours - 1 - i) * 3600_000);
     const hourOfDay = t.getHours();
-    // Diurnal traffic / weather curve: higher in morning (7-9) and evening (18-21)
     const diurnal = Math.sin(((hourOfDay - 6) * Math.PI) / 12) * 6;
     const jitter = Math.sin((i + stationId) * 0.9) * 4;
     const val = Math.max(5, (base + diurnal + jitter) * multiplier);
@@ -595,14 +963,14 @@ export function getMockAirQualityHistory(
     points.push({
       observed_at: t.toISOString(),
       value: Math.round(val * 10) / 10,
-      unit: "ug/m3",
+      unit: "µg/m³",
     });
   }
 
   return {
     station_id: stationId,
     pollutant,
-    unit: "ug/m3",
+    unit: "µg/m³",
     points,
   };
 }
@@ -610,68 +978,29 @@ export function getMockAirQualityHistory(
 export const mockAirQualityHistory: AirQualityHistoryResponse = getMockAirQualityHistory(1, "pm25", 24);
 
 // ---------------------------------------------------------------------------
-// Weather Forecast (24h hourly)
-// ---------------------------------------------------------------------------
-
-function generateForecast(hours: number): WeatherForecastResponse["forecast"] {
-  const now = Date.now();
-  const forecast: WeatherForecastResponse["forecast"] = [];
-  for (let i = 1; i <= hours; i++) {
-    const t = new Date(now + i * 3600_000);
-    const hourOfDay = t.getHours();
-    // Simulate daily temperature cycle: cooler at night, hotter midday
-    const tempBase = 28 + Math.sin((hourOfDay - 6) * Math.PI / 12) * 4;
-    const humidity = 75 - Math.sin((hourOfDay - 6) * Math.PI / 12) * 15;
-    // Random afternoon thunderstorm chance
-    const precipChance = hourOfDay >= 13 && hourOfDay <= 16 ? 0.4 : 0.1;
-    const precip = Math.random() < precipChance ? Math.round(Math.random() * 8 * 10) / 10 : 0;
-    forecast.push({
-      valid_time: t.toISOString(),
-      is_forecast: true,
-      temperature_c: Math.round(tempBase * 10) / 10,
-      humidity_pct: Math.round(humidity * 10) / 10,
-      precipitation_mm: precip,
-      wind_speed_kmh: Math.round((5 + Math.random() * 10) * 10) / 10,
-      wind_direction_deg: Math.round(Math.random() * 360),
-      age_seconds: null,
-    });
-  }
-  return forecast;
-}
-
-export const mockWeatherForecast: WeatherForecastResponse = {
-  area_id: 1,
-  area_name: "Kab. Kampar",
-  forecast: generateForecast(24),
-};
-
-// ---------------------------------------------------------------------------
-// Administrative Areas — Simplified mock geometry for Riau kabupaten
-// PROVENANCE: These are simplified bounding-box polygons for UI testing.
-// Real hookup uses backend GeoJSON which comes from OSM/administrative boundaries.
-// The shape here is NOT accurate survey data — it's illustrative only.
+// Administrative Areas
 // ---------------------------------------------------------------------------
 
 const RIUA_KABUPATEN: Array<{ id: number; name: string; bbox: number[][] }> = [
-  { id: 1, name: "Kab. Rokan Hilir", bbox: [[100.8, 1.6], [102.0, 2.3]] },
-  { id: 2, name: "Kota Dumai", bbox: [[101.1, 1.6], [101.5, 1.8]] },
-  { id: 3, name: "Kab. Kampar", bbox: [[100.3, -0.1], [101.5, 1.0]] },
-  { id: 4, name: "Kab. Pelalawan", bbox: [[101.5, -0.8], [102.5, 0.2]] },
-  { id: 5, name: "Kab. Siak", bbox: [[101.5, 0.5], [102.5, 1.2]] },
-  { id: 6, name: "Kab. Kuantan Singingi", bbox: [[100.8, -1.0], [101.8, -0.2]] },
-  { id: 7, name: "Kab. Indragiri Hulu", bbox: [[101.8, -0.2], [102.8, 0.8]] },
-  { id: 8, name: "Kab. Rokan Hulu", bbox: [[99.8, 0.0], [100.8, 0.8]] },
-  { id: 9, name: "Kab. Bengkalis", bbox: [[101.5, 1.5], [102.5, 2.3]] },
-  { id: 10, name: "Kab. Indragiri Hilir", bbox: [[102.0, -0.5], [103.2, 0.5]] },
-  { id: 11, name: "Kota Pekanbaru", bbox: [[101.35, 0.40], [101.55, 0.65]] },
-  { id: 12, name: "Kab. Kepulauan Meranti", bbox: [[102.5, 0.8], [103.5, 1.5]] },
+  { id: 1, name: "Kab. Rokan Hilir", bbox: [[100.3, 1.4], [101.4, 2.6]] },
+  { id: 2, name: "Kota Dumai", bbox: [[101.2, 1.5], [101.6, 1.8]] },
+  { id: 3, name: "Kab. Kampar", bbox: [[100.5, -0.2], [101.6, 0.9]] },
+  { id: 4, name: "Kab. Pelalawan", bbox: [[101.5, -0.4], [103.0, 0.7]] },
+  { id: 5, name: "Kab. Siak", bbox: [[101.3, 0.5], [102.5, 1.4]] },
+  { id: 6, name: "Kab. Kuantan Singingi", bbox: [[101.0, -1.0], [101.9, -0.1]] },
+  { id: 7, name: "Kab. Indragiri Hulu", bbox: [[101.8, -0.9], [102.8, -0.1]] },
+  { id: 8, name: "Kab. Rokan Hulu", bbox: [[99.9, 0.3], [101.0, 1.6]] },
+  { id: 9, name: "Kab. Bengkalis", bbox: [[101.1, 1.0], [102.4, 1.95]] },
+  { id: 10, name: "Kab. Indragiri Hilir", bbox: [[102.4, -1.1], [103.8, 0.1]] },
+  { id: 11, name: "Kota Pekanbaru", bbox: [[101.35, 0.45], [101.55, 0.65]] },
+  { id: 12, name: "Kab. Kepulauan Meranti", bbox: [[102.4, 0.6], [103.5, 1.5]] },
 ];
 
 function bboxToMultiPolygon(bbox: number[][]): { type: "MultiPolygon"; coordinates: number[][][][] } {
   const [[west, south], [east, north]] = bbox;
   return {
     type: "MultiPolygon",
-    coordinates: [[[ [west, south], [east, south], [east, north], [west, north], [west, south] ]]],
+    coordinates: [[[[west, south], [east, south], [east, north], [west, north], [west, south]]]],
   };
 }
 
@@ -690,7 +1019,6 @@ export const mockAdminAreas: AdminAreasResponse = {
   })),
 };
 
-// Lookup: find kabupaten by lat/lon (simple bbox containment)
 function findArea(lat: number, lon: number): AdminAreaLookupResponse | null {
   for (const k of RIUA_KABUPATEN) {
     const [[west, south], [east, north]] = k.bbox;
@@ -698,19 +1026,14 @@ function findArea(lat: number, lon: number): AdminAreaLookupResponse | null {
       return { id: k.id, name: k.name, level: "kabupaten_kota" };
     }
   }
-  // Default to Rokan Hilir if outside all boxes (for mock demo)
-  return { id: 1, name: "Kab. Rokan Hilir", level: "kabupaten_kota" };
+  return { id: 11, name: "Kota Pekanbaru", level: "kabupaten_kota" };
 }
 
-export const mockAdminLookup: AdminAreaLookupResponse = findArea(0.5, 101.5)!;
+export const mockAdminLookup: AdminAreaLookupResponse = findArea(0.53, 101.44)!;
 
 // ---------------------------------------------------------------------------
-// Param-aware mock filtering — lets E2E exercise the real filter → list flow
-// in mock mode. Mirrors backend semantics loosely: kabupaten by id→name map,
-// min_confidence as a minimum rank, date range on acquired_at (ISO compare).
+// Param-aware mock filtering with FIRMS Fusion
 // ---------------------------------------------------------------------------
-
-import type { HotspotFeature } from "./types";
 
 const MOCK_CONF_RANK: Record<string, number> = {
   low: 0,
@@ -727,12 +1050,12 @@ function mockConfRank(value: string | null): number {
 }
 
 export function filterMockHotspots(params: Record<string, string>): HotspotsResponse {
-  let features: HotspotFeature[] = mockHotspots.features;
+  let features: HotspotFeature[] = mockRawHotspots.features;
 
   if (params.kabupaten_id) {
     const id = Number(params.kabupaten_id);
-    const name = mockHotspotsSummary.items.find((i) => i.kabupaten_id === id)?.kabupaten_name;
-    features = name ? features.filter((f) => f.properties.area_name === name) : [];
+    const targetName = RIUA_KABUPATEN.find((k) => k.id === id)?.name;
+    features = targetName ? features.filter((f) => f.properties.area_name?.includes(targetName) || targetName.includes(f.properties.area_name || "")) : [];
   }
   if (params.min_confidence) {
     const min = mockConfRank(params.min_confidence);
@@ -742,82 +1065,91 @@ export function filterMockHotspots(params: Record<string, string>): HotspotsResp
     features = features.filter((f) => (f.properties.acquired_at ?? "") >= params.date_from);
   }
   if (params.date_to) {
-    const end =
-      params.date_to.length <= 10 ? `${params.date_to}T23:59:59.999Z` : params.date_to;
+    const end = params.date_to.length <= 10 ? `${params.date_to}T23:59:59.999Z` : params.date_to;
     features = features.filter((f) => (f.properties.acquired_at ?? "") <= end);
   }
-  return { ...mockHotspots, features, count: features.length };
+
+  // Deduplicate and fuse
+  const fusion = fuseAndDeduplicateHotspots(features);
+
+  return {
+    type: "FeatureCollection",
+    disclaimer:
+      "Hotspots are satellite heat indications and are NOT confirmed fires. Ground verification is required; absence of hotspots does not guarantee absence of fire.",
+    count: fusion.fusedFeatures.length,
+    total_raw_count: fusion.totalRawDetections,
+    active_clusters_count: fusion.activeClustersCount,
+    features: fusion.fusedFeatures,
+  };
 }
 
 export function summarizeMockHotspots(params: Record<string, string>): HotspotsSummaryResponse {
-  const features = filterMockHotspots(params).features;
-  const counts = new Map<string, number>();
-  for (const f of features) {
-    const name = f.properties.area_name ?? "Tidak diketahui";
-    counts.set(name, (counts.get(name) ?? 0) + 1);
-  }
-  const items = mockHotspotsSummary.items
-    .filter((i) => counts.has(i.kabupaten_name))
-    .map((i) => ({ ...i, count: counts.get(i.kabupaten_name) ?? 0 }));
-  return { total: features.length, items };
+  const filtered = filterMockHotspots(params);
+  const fusion = fuseAndDeduplicateHotspots(filtered.features);
+
+  const items = Object.entries(fusion.clusterCountsByKabupaten).map(([name, count], idx) => ({
+    kabupaten_id: idx + 1,
+    kabupaten_name: name,
+    count,
+    raw_count: fusion.rawCountsByKabupaten[name] || count,
+  }));
+
+  return {
+    total: fusion.activeClustersCount,
+    total_raw: fusion.totalRawDetections,
+    items,
+  };
 }
 
 // ---------------------------------------------------------------------------
-// Data Sources
+// Meta Data Sources
 // ---------------------------------------------------------------------------
 
 export const mockDataSources: MetaDataSourcesResponse = {
   sources: [
     {
-      key: "firms_viirs",
-      name: "NASA FIRMS VIIRS",
-      provider_url: "https://firms.modaps.eosdis.nasa.gov/",
-      license_note:
-        "Data is in the public domain and may be freely downloaded, shared, and used without restriction. NASA requests attribution when possible.",
-      attribution:
-        "NASA FIRMS - Fire Information for Resource Management System",
-      update_interval_seconds: 3600,
+      key: "firms_viirs_nrt",
+      name: "NASA FIRMS VIIRS NRT",
+      provider_url: "https://firms.modaps.eosdis.nasa.gov/api/area/",
+      license_note: "NASA open data; attribution requested",
+      attribution: "Fire detections courtesy of NASA FIRMS (LANCE/EOSDIS)",
+      update_interval_seconds: 7200,
       active: true,
     },
     {
-      key: "firms_modis",
-      name: "NASA FIRMS MODIS",
-      provider_url: "https://firms.modaps.eosdis.nasa.gov/",
-      license_note:
-        "Data is in the public domain and may be freely downloaded, shared, and used without restriction. NASA requests attribution when possible.",
-      attribution:
-        "NASA FIRMS - Fire Information for Resource Management System",
-      update_interval_seconds: 3600,
+      key: "firms_modis_nrt",
+      name: "NASA FIRMS MODIS NRT",
+      provider_url: "https://firms.modaps.eosdis.nasa.gov/api/area/",
+      license_note: "NASA open data; attribution requested",
+      attribution: "Fire detections courtesy of NASA FIRMS (LANCE/EOSDIS)",
+      update_interval_seconds: 7200,
       active: true,
     },
     {
-      key: "openaq",
-      name: "OpenAQ",
-      provider_url: "https://openaq.org/",
-      license_note:
-        "OpenAQ data is provided under the Creative Commons Attribution 4.0 International License (CC BY 4.0).",
-      attribution: "OpenAQ (openaq.org)",
-      update_interval_seconds: 10800,
+      key: "geoboundaries",
+      name: "geoBoundaries Administrative Boundaries",
+      provider_url: "https://www.geoboundaries.org/",
+      license_note: "CC-BY 4.0",
+      attribution: "geoBoundaries (Runfola et al., 2020)",
+      update_interval_seconds: null,
       active: true,
     },
     {
       key: "open_meteo",
-      name: "Open-Meteo",
-      provider_url: "https://open-meteo.com/",
-      license_note:
-        "Open-Meteo data is free for non-commercial use. Commercial use requires a license. Attribution appreciated but not required.",
-      attribution: "Open-Meteo (open-meteo.com)",
-      update_interval_seconds: 3600,
+      name: "Open-Meteo Weather API",
+      provider_url: "https://api.open-meteo.com/v1/forecast",
+      license_note: "Free for non-commercial use with attribution",
+      attribution: "Weather data by Open-Meteo.com",
+      update_interval_seconds: 7200,
       active: true,
     },
     {
-      key: "osm_boundaries",
-      name: "OpenStreetMap Administrative Boundaries",
-      provider_url: "https://www.openstreetmap.org/",
-      license_note:
-        "Map data is available under the Open Database License (ODbL). You are free to share and adapt with attribution.",
-      attribution: "© OpenStreetMap contributors",
-      update_interval_seconds: null,
+      key: "openaq_v3",
+      name: "OpenAQ v3 Air Quality API",
+      provider_url: "https://api.openaq.org/v3/",
+      license_note: "Open data; attribution to OpenAQ and originating monitor network required",
+      attribution: "Air quality data via OpenAQ",
+      update_interval_seconds: 7200,
       active: true,
     },
   ],

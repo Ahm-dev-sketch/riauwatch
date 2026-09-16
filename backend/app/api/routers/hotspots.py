@@ -28,15 +28,17 @@ _HOTSPOTS_SQL = (
     "SELECT h.id AS id, ST_AsGeoJSON(h.geom) AS geometry, h.satellite AS satellite, "
     "h.instrument AS instrument, h.confidence AS confidence, "
     "h.confidence_value AS confidence_value, h.daynight AS daynight, h.frp AS frp, "
-    "h.acquired_at AS acquired_at, a.name AS area_name "
+    "h.acquired_at AS acquired_at, "
+    "COALESCE(a.name, (SELECT a2.name FROM administrative_areas a2 WHERE a2.level = 'kabupaten_kota' ORDER BY a2.geom <-> h.geom LIMIT 1)) AS area_name "
     "FROM hotspots h LEFT JOIN administrative_areas a ON a.id = h.area_id "
     "WHERE {where} ORDER BY h.acquired_at DESC LIMIT :limit OFFSET :offset"
 )
 
 _SUMMARY_SQL = (
-    "SELECT h.area_id AS area_id, a.name AS area_name, COUNT(*) AS count "
+    "SELECT COALESCE(h.area_id, (SELECT a2.id FROM administrative_areas a2 WHERE a2.level = 'kabupaten_kota' ORDER BY a2.geom <-> h.geom LIMIT 1)) AS area_id, "
+    "COALESCE(a.name, (SELECT a2.name FROM administrative_areas a2 WHERE a2.level = 'kabupaten_kota' ORDER BY a2.geom <-> h.geom LIMIT 1)) AS area_name, COUNT(*) AS count "
     "FROM hotspots h LEFT JOIN administrative_areas a ON a.id = h.area_id "
-    "WHERE {where} GROUP BY h.area_id, a.name ORDER BY COUNT(*) DESC"
+    "WHERE {where} GROUP BY 1, 2 ORDER BY COUNT(*) DESC"
 )
 
 _COUNT_SQL = "SELECT COUNT(*) AS total FROM hotspots h WHERE {where}"
@@ -83,17 +85,23 @@ def _to_feature(row: dict[str, Any]) -> m.HotspotFeature:
     geometry = json.loads(str(row["geometry"]))
     acquired = row["acquired_at"]
     assert hasattr(acquired, "isoformat"), "acquired_at must be a datetime"
+    inst = str(row.get("instrument") or row.get("satellite") or "").upper()
+    sensor = "VIIRS" if "VIIRS" in inst else ("MODIS" if "MODIS" in inst or "TERRA" in inst or "AQUA" in inst else "VIIRS")
     return m.HotspotFeature(
         geometry=geometry,
         properties=m.HotspotProperties(
+            id=int(row["id"]) if row.get("id") is not None else None,
             satellite=str(row["satellite"]),
             instrument=row["instrument"],
             confidence=row["confidence"],
             confidence_value=as_float(row["confidence_value"]),
             daynight=row["daynight"],
+            frp=as_float(row.get("frp")),
             acquired_at=acquired,
             area_name=row["area_name"],
             hotspot_indication=True,
+            sensor=sensor,
+            raw_detections_count=1,
         ),
     )
 

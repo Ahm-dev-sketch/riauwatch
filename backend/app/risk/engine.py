@@ -48,12 +48,22 @@ class RiskResult:
     insufficient: bool = False
     observed_from: datetime | None = None
     observed_to: datetime | None = None
+    fire_hazard_index: float | None = None
+    fire_risk_level: str | None = None
+    air_quality_hazard_index: float | None = None
+    air_quality_level: str | None = None
+    pm25_value: float | None = None
 
     def to_dict(self) -> dict:
         """Factors JSON blob stored in risk_assessments.factors (docs §4 shape)."""
         return {
             "level": self.level.upper() if self.level else None,
             "score": self.score,
+            "fire_hazard_index": self.fire_hazard_index,
+            "fire_risk_level": self.fire_risk_level,
+            "air_quality_hazard_index": self.air_quality_hazard_index,
+            "air_quality_level": self.air_quality_level,
+            "pm25_value": self.pm25_value,
             "model_version": C.MODEL_VERSION,
             "factors": [
                 {
@@ -164,11 +174,33 @@ def unavailable_reason(name: str) -> str:
     return C.UNAVAILABLE_REASONS.get(name, f"Data {name} tidak tersedia")
 
 
+def compute_aq_hazard(pm25: float | None) -> tuple[float | None, str | None]:
+    """Compute 0-100 Air Quality Hazard Index and ISPU category label from PM2.5."""
+    if pm25 is None:
+        return None, None
+    if pm25 <= 15.5:
+        idx = round((pm25 / 15.5) * 20.0, 1)
+        return idx, "Baik"
+    elif pm25 <= 55.4:
+        idx = round(20.0 + ((pm25 - 15.5) / (55.4 - 15.5)) * 30.0, 1)
+        return idx, "Sedang"
+    elif pm25 <= 150.4:
+        idx = round(50.0 + ((pm25 - 55.4) / (150.4 - 55.4)) * 25.0, 1)
+        return idx, "Tidak Sehat"
+    elif pm25 <= 250.4:
+        idx = round(75.0 + ((pm25 - 150.4) / (250.4 - 150.4)) * 15.0, 1)
+        return idx, "Sangat Tidak Sehat"
+    else:
+        idx = min(100.0, round(90.0 + ((pm25 - 250.4) / 250.0) * 10.0, 1))
+        return idx, "Berbahaya"
+
+
 def compute_risk(
     factors: list[FactorInput],
     *,
     observed_from: datetime | None = None,
     observed_to: datetime | None = None,
+    pm25_value: float | None = None,
 ) -> RiskResult:
     """Score one area from its factors."""
     by_name = {f.name: f for f in factors}
@@ -215,6 +247,8 @@ def compute_risk(
             )
         )
 
+    aq_index, aq_label = compute_aq_hazard(pm25_value)
+
     hotspot = next((r for r in results if r.name == "hotspot_density_48h"), None)
     available_weight = sum(C.WEIGHTS[r.name] for r in results if r.available)
     if hotspot is None or not hotspot.available or available_weight < C.COVERAGE_FLOOR:
@@ -225,15 +259,36 @@ def compute_risk(
             insufficient=True,
             observed_from=observed_from,
             observed_to=observed_to,
+            fire_hazard_index=None,
+            fire_risk_level=None,
+            air_quality_hazard_index=aq_index,
+            air_quality_level=aq_label,
+            pm25_value=pm25_value,
         )
 
     total = sum(r.contribution for r in results if r.available)
     score = round(total / available_weight, 1)
+    canonical_level = level_for_score(score)
+
+    fire_level_map = {
+        "extreme": "Ekstrem",
+        "very_high": "Sangat Tinggi",
+        "high": "Tinggi",
+        "moderate": "Sedang",
+        "low": "Rendah",
+    }
+    fire_level_label = fire_level_map.get(canonical_level, "Rendah")
+
     return RiskResult(
-        level=level_for_score(score),
+        level=canonical_level,
         score=score,
         factors=results,
         insufficient=False,
         observed_from=observed_from,
         observed_to=observed_to,
+        fire_hazard_index=score,
+        fire_risk_level=fire_level_label,
+        air_quality_hazard_index=aq_index,
+        air_quality_level=aq_label,
+        pm25_value=pm25_value,
     )

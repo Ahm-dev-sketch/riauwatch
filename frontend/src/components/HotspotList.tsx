@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { HotspotsResponse } from "@/lib/types";
+import { resolveRiauLocation } from "@/lib/geo";
 
 // ---------------------------------------------------------------------------
 // HotspotList — keyboard-accessible list view of hotspot features.
@@ -67,14 +68,28 @@ function confidenceLabel(confidence: string | null): string {
 }
 
 function friendlySat(sat: string | null): string {
-  if (!sat) return "-";
-  const s = sat.toUpperCase();
-  if (s === "N20" || s.includes("NOAA-20") || s.includes("NOAA20")) return "NOAA-20";
-  if (s.includes("N21") || s.includes("NOAA-21")) return "NOAA-21";
-  if (s === "SNPP" || s.includes("S-NPP")) return "Suomi-NPP";
-  if (s.includes("TERRA")) return "Terra";
-  if (s.includes("AQUA")) return "Aqua";
+  if (!sat) return "Satelit Lingkungan";
+  const s = sat.toUpperCase().trim();
+  if (s === "N" || s === "N20" || s.includes("NOAA-20") || s.includes("NOAA20")) return "NOAA-20";
+  if (s === "N21" || s.includes("NOAA-21") || s.includes("NOAA21")) return "NOAA-21";
+  if (s === "SNPP" || s.includes("S-NPP") || s.includes("SUOMI")) return "Suomi-NPP";
+  if (s.includes("TERRA") || s === "T") return "Terra";
+  if (s.includes("AQUA") || s === "A") return "Aqua";
   return sat;
+}
+
+function getConfidenceScore(props: Record<string, unknown>): number {
+  const conf = String(props.confidence || "").toLowerCase();
+  const val = props.confidence_value != null ? Number(props.confidence_value) : null;
+  const frp = props.frp != null ? Number(props.frp) : 0;
+
+  let base = 0;
+  if (conf === "h" || conf === "high") base = 300;
+  else if (conf === "n" || conf === "nominal") base = 200;
+  else base = 100;
+
+  const valueScore = val != null ? val : (base === 300 ? 80 : base === 200 ? 50 : 20);
+  return base + valueScore + (frp * 0.1);
 }
 
 export function HotspotList({
@@ -87,12 +102,27 @@ export function HotspotList({
 }: HotspotListProps) {
   const listRef = useRef<HTMLUListElement>(null);
   const [expanded, setExpanded] = useState(true);
+  const [selectedFeature, setSelectedFeature] = useState<HotspotFeature | null>(null);
 
-  const features = hotspots?.features ?? [];
+  // Urutkan dari tingkat akurasi / intensitas paling tinggi ke paling rendah
+  const features = useMemo(() => {
+    const list = hotspots?.features ?? [];
+    return [...list].sort((a, b) => {
+      const scoreA = getConfidenceScore(a.properties as unknown as Record<string, unknown>);
+      const scoreB = getConfidenceScore(b.properties as unknown as Record<string, unknown>);
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      // Jika sama, urutkan waktu pengamatan terbaru
+      const timeA = new Date(a.properties.acquired_at || 0).getTime();
+      const timeB = new Date(b.properties.acquired_at || 0).getTime();
+      return timeB - timeA;
+    });
+  }, [hotspots?.features]);
+
   const displayCount = totalCount ?? features.length;
 
   const handleItemClick = useCallback(
     (feature: HotspotFeature, index: number) => {
+      setSelectedFeature(feature);
       onHighlight?.(feature, index);
     },
     [onHighlight],
@@ -207,7 +237,7 @@ export function HotspotList({
             features.map((feature, index) => {
               const coords = feature.geometry.coordinates;
                   const props = feature.properties as unknown as Record<string, unknown>;
-              const isHighlighted = highlightedIndex === index;
+              const isHighlighted = selectedFeature === feature || highlightedIndex === index;
 
               return (
                 <li
@@ -236,7 +266,7 @@ export function HotspotList({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium text-rw-smoke-900 truncate">
-                        {(props.area_name as string) || "Lokasi tidak diketahui"}
+                        {resolveRiauLocation(coords[1], coords[0], props.area_name as string).fullDescription}
                       </span>
                       <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${confidenceColor(props.confidence as string | null)}`}>
                         {confidenceLabel(props.confidence as string | null)}

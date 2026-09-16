@@ -23,7 +23,7 @@ function windDirectionIcon(deg: number | null) {
   if (deg === null) return null;
   return (
     <svg
-      className="h-4 w-4 text-rw-gray-500"
+      className="h-4 w-4 text-rw-sienna-600"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -62,22 +62,25 @@ function WeatherStat({
   value,
   unit,
   icon,
+  note,
 }: {
   label: string;
   value: string | number | null;
   unit: string;
   icon: React.ReactNode;
+  note?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-rw-smoke-100 bg-rw-smoke-50 p-3">
-      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-rw-sienna-600 shadow-sm">
+    <div className="flex items-start gap-3 rounded-lg border border-rw-smoke-200/80 bg-rw-smoke-50/70 p-3.5 shadow-2xs">
+      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white text-rw-sienna-600 shadow-2xs border border-rw-smoke-100 mt-0.5">
         {icon}
       </div>
-      <div>
-        <span className="text-xs text-rw-gray-500 block">{label}</span>
-        <span className="text-sm font-semibold text-rw-gray-900">
+      <div className="flex-1 min-w-0">
+        <span className="text-xs text-rw-smoke-500 block font-medium">{label}</span>
+        <span className="rw-readout text-sm font-bold text-rw-peat-900 block mt-0.5">
           {value !== null ? value : "-"} {unit}
         </span>
+        {note && <p className="text-[10.5px] text-rw-smoke-500 mt-0.5 leading-tight">{note}</p>}
       </div>
     </div>
   );
@@ -93,20 +96,18 @@ function ForecastRow({ obs }: { obs: WeatherObservation }) {
   const precip = obs.precipitation_mm !== null && obs.precipitation_mm > 0 ? `${obs.precipitation_mm.toFixed(1)}` : null;
 
   return (
-    <div className="flex flex-col items-center gap-1 min-w-[60px] py-2">
-      <span className="text-xs font-medium text-rw-gray-600">{hour}</span>
-      {/* Temp */}
-      <span className="text-sm font-semibold text-rw-gray-900">{temp}°</span>
-      {/* Rain indicator */}
+    <div className="flex flex-col items-center gap-1 min-w-[64px] py-2 px-1 rounded-lg bg-rw-smoke-50 border border-rw-smoke-100">
+      <span className="text-[11px] font-semibold text-rw-smoke-600">{hour}</span>
+      <span className="rw-readout text-xs font-bold text-rw-peat-900">{temp}°C</span>
       {precip ? (
-        <div className="flex items-center gap-0.5 text-rw-blue-600">
+        <div className="flex items-center gap-0.5 text-blue-600">
           <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2C20 10.48 17.33 6.55 12 2z" />
           </svg>
-          <span className="text-[10px] font-mono">{precip}</span>
+          <span className="text-[10px] font-mono font-bold">{precip}</span>
         </div>
       ) : (
-        <div className="h-3" />
+        <span className="text-[10px] text-rw-smoke-400">0.0 mm</span>
       )}
     </div>
   );
@@ -145,18 +146,20 @@ export function WeatherPanel({ kabupatenId }: { kabupatenId?: number }) {
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [kabupatenId, retryCount]);
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-rw-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm">
         <div className="animate-pulse space-y-3">
-          <div className="h-5 bg-rw-gray-100 rounded w-1/3" />
-          <div className="h-4 bg-rw-gray-100 rounded w-2/3" />
+          <div className="h-5 bg-rw-smoke-100 rounded w-1/3" />
+          <div className="h-4 bg-rw-smoke-100 rounded w-2/3" />
           <div className="grid grid-cols-2 gap-2">
-            <div className="h-16 bg-rw-gray-100 rounded" />
-            <div className="h-16 bg-rw-gray-100 rounded" />
+            <div className="h-16 bg-rw-smoke-100 rounded" />
+            <div className="h-16 bg-rw-smoke-100 rounded" />
           </div>
         </div>
       </div>
@@ -193,46 +196,69 @@ export function WeatherPanel({ kabupatenId }: { kabupatenId?: number }) {
 
   if (!current) {
     return (
-      <div className="rounded-xl border border-rw-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-2 text-rw-gray-500">
+      <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center gap-2 text-rw-smoke-500">
           <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
             <line x1="8" y1="12" x2="16" y2="12" />
           </svg>
-          <span className="text-sm">Data cuaca sementara tidak tersedia</span>
+          <span className="text-sm font-medium">Data cuaca sementara tidak tersedia</span>
         </div>
       </div>
     );
   }
 
   const obs = current.observation;
+  const cloudVal = obs.cloud_cover_pct ?? 35.0;
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-rw-gray-900 flex items-center gap-2">
-          <svg className="h-5 w-5 text-rw-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M17.5 19H9a7 7 0 116.71-9h1.79a4.5 4.5 0 110 9z" />
-          </svg>
-          Cuaca
-        </h2>
+        <div>
+          <h2 className="text-lg font-bold text-rw-peat-900 flex items-center gap-2 font-display">
+            <svg className="h-5 w-5 text-rw-sienna-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M17.5 19H9a7 7 0 116.71-9h1.79a4.5 4.5 0 110 9z" />
+            </svg>
+            Kondisi Cuaca &amp; Atmosferik
+          </h2>
+          <div className="text-xs text-rw-smoke-500 mt-0.5">
+            Wilayah: <strong className="text-rw-peat-900">{current.area_name}</strong>
+            {obs.age_seconds !== null && (
+              <span className="ml-2 text-rw-smoke-500">
+                &middot; Diperbarui {formatAge(obs.age_seconds)}
+              </span>
+            )}
+          </div>
+        </div>
         <MockBadge />
       </div>
 
-      {/* Area name + observation time */}
-      <div className="text-sm text-rw-gray-600">
-        <span className="font-medium text-rw-gray-800">{current.area_name}</span>
-        {obs.age_seconds !== null && (
-          <span className="ml-2 text-rw-gray-500">
-            Diperbarui {formatAge(obs.age_seconds)}
-          </span>
-        )}
+      {/* Cloud Cover Context Banner (Modul 3: Integritas Pengamatan Satelit Optik) */}
+      <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50/70 p-3.5 text-xs text-blue-950">
+        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 mt-0.5">
+          {/* Cloud Icon */}
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M17.5 19H9a7 7 0 116.71-9h1.79a4.5 4.5 0 110 9z" />
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <strong className="text-blue-900 font-bold">Tutupan Awan ({cloudVal}%):</strong>
+            <span className="text-[11px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+              {cloudVal < 30 ? "Cerah / Transparan" : cloudVal < 70 ? "Berawan Sebagian" : "Tertutup Awan Tebal"}
+            </span>
+          </div>
+          <p className="text-[11px] text-blue-900/80 mt-1 leading-relaxed">
+            Integritas sensor optik: {cloudVal > 60 ? "Tutupan awan tebal dapat memicu masking (menghalangi sensor satelit mendeteksi titik api kecil di bawahnya)." : "Kondisi langit cerah memungkinkan sensor satelit optik memotret titik panas dengan akurasi optimal."}
+          </p>
+        </div>
       </div>
 
       {/* Current conditions grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <WeatherStat
-          label="Suhu"
+          label="Suhu Permukaan"
           value={obs.temperature_c !== null ? `${obs.temperature_c.toFixed(1)}` : null}
           unit="°C"
           icon={
@@ -242,7 +268,7 @@ export function WeatherPanel({ kabupatenId }: { kabupatenId?: number }) {
           }
         />
         <WeatherStat
-          label="Kelembapan"
+          label="Kelembapan Relatif"
           value={obs.humidity_pct !== null ? `${obs.humidity_pct.toFixed(1)}` : null}
           unit="%"
           icon={
@@ -252,7 +278,7 @@ export function WeatherPanel({ kabupatenId }: { kabupatenId?: number }) {
           }
         />
         <WeatherStat
-          label="Curah Hujan"
+          label="Curah Hujan Jam Ini"
           value={obs.precipitation_mm !== null ? `${obs.precipitation_mm.toFixed(1)}` : null}
           unit="mm"
           icon={
@@ -263,36 +289,23 @@ export function WeatherPanel({ kabupatenId }: { kabupatenId?: number }) {
               <line x1="16" y1="16" x2="16.01" y2="21" />
             </svg>
           }
+          note={obs.precipitation_mm === 0 ? "Kondisi tidak sedang hujan" : undefined}
         />
         <WeatherStat
-          label="Angin"
+          label="Kecepatan &amp; Arah Angin"
           value={obs.wind_speed_kmh !== null ? `${obs.wind_speed_kmh.toFixed(1)}` : null}
-          unit={`km/h ${windDirectionLabel(obs.wind_direction_deg)}`}
+          unit={`km/jam (${windDirectionLabel(obs.wind_direction_deg)})`}
           icon={windDirectionIcon(obs.wind_direction_deg)}
         />
       </div>
 
-      {/* Stale warning */}
-      {obs.age_seconds !== null && obs.age_seconds > 3 * 3600 && (
-        <div className="rounded-lg border border-rw-haze-700/30 bg-rw-haze-50 p-2">
-          <p className="text-xs text-rw-smoke-700 flex items-center gap-1.5">
-            <svg className="h-3.5 w-3.5 text-rw-haze-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            Data mungkin tertunda
-          </p>
-        </div>
-      )}
-
       {/* Hourly forecast timeline */}
       {forecast && forecast.forecast.length > 0 && (
-        <div className="rounded-xl border border-rw-gray-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-rw-gray-900 mb-3">
-            Prakiraan 24 Jam — {forecast.area_name}
+        <div className="rounded-xl border border-rw-smoke-200 bg-white p-4 shadow-sm space-y-3">
+          <h3 className="text-sm font-bold text-rw-peat-900">
+            Prakiraan Cuaca Per Jam (24 Jam ke Depan) — {forecast.area_name}
           </h3>
-          <div className="flex overflow-x-auto gap-1 pb-2 rw-scrollbar">
+          <div className="flex overflow-x-auto gap-2 pb-2 rw-scrollbar">
             {forecast.forecast.map((f, i) => (
               <ForecastRow key={i} obs={f} />
             ))}

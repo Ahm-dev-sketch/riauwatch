@@ -5,6 +5,9 @@ import { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardR
 import { useRouter } from "next/navigation";
 import type { Map, MapLayerMouseEvent, GeoJSONSource, StyleSpecification } from "maplibre-gl";
 import type { HotspotsResponse, AdminAreasResponse } from "@/lib/types";
+import { KHG_RIAU_GEOJSON, isCoordinateInPeatland } from "@/lib/khg";
+import { generateWindGeoJSON } from "@/lib/wind";
+import { resolveRiauLocation } from "@/lib/geo";
 
 // Riau province coordinates & default view
 const RIAU_CENTER: [number, number] = [101.65, 0.55];
@@ -64,7 +67,10 @@ interface HotspotMapProps {
   hotspots: HotspotsResponse | null;
   adminAreas?: AdminAreasResponse | null;
   selectedKabupatenId?: string | number | null;
+  showHotspots?: boolean;
   showBoundaries?: boolean;
+  showKHG?: boolean;
+  showWind?: boolean;
   loading?: boolean;
   onHotspotClick?: (feature: HotspotsResponse["features"][0]) => void;
   /** Fired when tile loading fails or succeeds after retry. */
@@ -86,66 +92,7 @@ function formatAcquiredAt(acquiredAt: string | null): string {
 
 // Sub-location descriptor based on Riau geography & coordinates
 function describeRiauLocation(lat: number, lon: number, areaName: string | null): string {
-  const base = areaName || "Provinsi Riau";
-  
-  // Specific landmark & sector checks across Riau
-  if (base.includes("Pekanbaru")) {
-    if (lat < 0.50) return `${base} (Sektor Selatan / Tampan - Marpoyan)`;
-    if (lat > 0.54) return `${base} (Sektor Utara / Rumbai)`;
-    return `${base} (Sektor Pusat Kota / Sukajadi)`;
-  }
-  if (base.includes("Dumai")) {
-    if (lon > 101.50) return `${base} (Kawasan Industri Pelintung - Medang Kampai)`;
-    if (lon < 101.35) return `${base} (Sektor Sungai Sembilan)`;
-    return `${base} (Sektor Dumai Timur / Pesisir)`;
-  }
-  if (base.includes("Bengkalis")) {
-    if (lon < 101.40) return `${base} (Daratan Duri / Mandau - Pinggir)`;
-    if (lon > 102.10) return `${base} (Pulau Bengkalis / Bantan)`;
-    return `${base} (Sektor Bukit Batu / Siak Kecil)`;
-  }
-  if (base.includes("Rokan Hilir")) {
-    if (lat > 2.0) return `${base} (Pesisir Bagan Siapi-api / Sinaboi)`;
-    if (lon < 100.6) return `${base} (Sektor Bagan Sinembah / Simpang Kanan)`;
-    return `${base} (Sektor Tanah Putih / Kubu)`;
-  }
-  if (base.includes("Rokan Hulu")) {
-    if (lat > 1.0) return `${base} (Sektor Tambusai / Rambah Hilir)`;
-    return `${base} (Sektor Pasir Pengaraian / Rambah)`;
-  }
-  if (base.includes("Pelalawan")) {
-    if (lon > 102.4) return `${base} (Sektor Teluk Meranti / Kuala Kampar)`;
-    if (lon < 101.8) return `${base} (Sektor Langgam / Pangkalan Kerinci)`;
-    return `${base} (Sektor Pangkalan Kuras / Bunut)`;
-  }
-  if (base.includes("Siak")) {
-    if (lon < 101.5) return `${base} (Sektor Kandis / Minas)`;
-    if (lon > 102.1) return `${base} (Sektor Sungai Apit / Sabak Auh)`;
-    return `${base} (Sektor Siak Sri Indrapura / Mempura)`;
-  }
-  if (base.includes("Kampar")) {
-    if (lat > 0.5) return `${base} (Sektor Tapung / Tapung Hilir)`;
-    if (lat < 0.1) return `${base} (Sektor Kampar Kiri / Gunung Sahilan)`;
-    return `${base} (Sektor Bangkinang / Salo)`;
-  }
-  if (base.includes("Indragiri Hulu")) {
-    if (lat > 0.0) return `${base} (Sektor Rengat / Kuala Cenaku)`;
-    return `${base} (Sektor Seberida / Batang Cenaku)`;
-  }
-  if (base.includes("Indragiri Hilir")) {
-    if (lat < -0.6) return `${base} (Sektor Keritang / Kemuning - Reteh)`;
-    if (lon > 103.2) return `${base} (Pesisir Kuala Indragiri / Mandah)`;
-    return `${base} (Sektor Tembilahan / Batang Tuaka)`;
-  }
-  if (base.includes("Kuantan Singingi")) {
-    if (lat > -0.4) return `${base} (Sektor Singingi / Singingi Hilir)`;
-    return `${base} (Sektor Teluk Kuantan / Kuantan Tengah)`;
-  }
-  if (base.includes("Kepulauan Meranti")) {
-    return `${base} (Kepulauan Tebing Tinggi / Rangsang)`;
-  }
-
-  return `${base} (Koordinat: ${lat.toFixed(3)}°, ${lon.toFixed(3)}°)`;
+  return resolveRiauLocation(lat, lon, areaName).fullDescription;
 }
 
 // Render a MapLibre popup for one hotspot feature (shared production path).
@@ -157,7 +104,7 @@ function showPopupForFeature(
   onHotspotClick?: (feature: HotspotFeature) => void,
 ): void {
   import("maplibre-gl").then((maplibregl) => {
-    new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "320px" })
+    new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "340px" })
       .setLngLat(coords)
       .setHTML(buildHotspotPopupHtml(props, coords))
       .addTo(map);
@@ -170,48 +117,58 @@ function humanizeConfidence(conf: string | null, confValue: number | null): { la
   const c = (conf || "").toLowerCase();
   if (c === "h" || c === "high") {
     return {
-      label: confValue != null ? `Tinggi (${confValue}%)` : "Tinggi (≥70%)",
+      label: confValue != null ? `Akurasi Tinggi (${confValue}%)` : "Akurasi Tinggi (≥70%)",
       color: "#ffffff",
-      bg: "#0f172a", // Solid Black
+      bg: "#0f172a", // Solid Jet Black
     };
   }
   if (c === "n" || c === "nominal") {
     return {
-      label: confValue != null ? `Sedang (${confValue}%)` : "Sedang (30–69%)",
+      label: confValue != null ? `Akurasi Sedang (${confValue}%)` : "Akurasi Sedang (30–69%)",
       color: "#92400e",
       bg: "#fef3c7", // Amber
     };
   }
   return {
-    label: confValue != null ? `Rendah (${confValue}%)` : "Rendah (<30%)",
+    label: confValue != null ? `Akurasi Rendah (${confValue}%)` : "Akurasi Rendah (<30%)",
     color: "#1e4d35",
     bg: "#f0fff4", // Mangrove
   };
 }
 
 function humanizeSatellite(sat: string | null): string {
-  if (!sat) return "-";
-  const s = sat.toUpperCase();
-  if (s === "N20" || s.includes("NOAA-20") || s.includes("NOAA20")) return "NOAA-20 (JPSS-1)";
-  if (s.includes("N21") || s.includes("NOAA-21") || s.includes("NOAA21")) return "NOAA-21 (JPSS-2)";
-  if (s === "SNPP" || s.includes("S-NPP") || s.includes("SUOMI")) return "Suomi NPP (NASA/NOAA)";
-  if (s.includes("TERRA")) return "Terra (NASA EOS)";
-  if (s.includes("AQUA")) return "Aqua (NASA EOS)";
-  return sat;
+  if (!sat) return "Satelit Lingkungan NASA / NOAA";
+  const s = sat.toUpperCase().trim();
+  if (s === "N" || s === "N20" || s.includes("NOAA-20") || s.includes("NOAA20")) return "Satelit Cuaca NOAA-20 (NASA/NOAA)";
+  if (s === "N21" || s.includes("NOAA-21") || s.includes("NOAA21")) return "Satelit Cuaca NOAA-21 (NASA/NOAA)";
+  if (s === "SNPP" || s.includes("S-NPP") || s.includes("SUOMI")) return "Satelit Suomi-NPP (NASA/NOAA)";
+  if (s.includes("TERRA") || s === "T") return "Satelit Terra (NASA EOS)";
+  if (s.includes("AQUA") || s === "A") return "Satelit Aqua (NASA EOS)";
+  return `Satelit ${sat}`;
 }
 
-function humanizeInstrument(inst: string | null, sat: string | null): string {
-  const i = (inst || sat || "").toUpperCase();
-  if (i.includes("VIIRS")) return "Sensor VIIRS (Resolusi 375m)";
-  if (i.includes("MODIS") || i.includes("TERRA") || i.includes("AQUA")) return "Sensor MODIS (Resolusi 1 km)";
-  return inst || sat || "-";
+function humanizeSensorDetail(sensor: string | null, instrument: string | null, satellite: string | null): string {
+  if (sensor === "MERGED") {
+    return "Pantauan Ganda (Satelit VIIRS & MODIS)";
+  }
+  const i = (instrument || satellite || "").toUpperCase();
+  if (i.includes("VIIRS") || i === "N" || i.includes("NOAA") || i.includes("SNPP")) return "Kamera Resolusi Tajam (VIIRS 375m)";
+  if (i.includes("MODIS") || i.includes("TERRA") || i.includes("AQUA")) return "Kamera Pantauan Luas (MODIS 1km)";
+  return "Sensor Satelit Lingkungan";
+}
+
+function humanizeFRP(frpVal: number | null): string {
+  if (frpVal == null) return "Tidak terukur";
+  if (frpVal >= 30) return `${frpVal.toFixed(1)} MW (Intensitas Sangat Panas)`;
+  if (frpVal >= 10) return `${frpVal.toFixed(1)} MW (Intensitas Sedang)`;
+  return `${frpVal.toFixed(1)} MW (Intensitas Ringan)`;
 }
 
 function humanizeDayNight(dn: string | null): { text: string; isDay: boolean } | null {
   if (!dn) return null;
   return dn.toUpperCase() === "D"
-    ? { text: "Siang Hari", isDay: true }
-    : { text: "Malam Hari", isDay: false };
+    ? { text: "Waktu Siang", isDay: true }
+    : { text: "Waktu Malam", isDay: false };
 }
 
 // Popup HTML for one hotspot feature (No Emojis — professional SVG icons)
@@ -224,47 +181,61 @@ function buildHotspotPopupHtml(
     props.confidence_value != null ? Number(props.confidence_value) : null,
   );
   const satText = humanizeSatellite(props.satellite as string | null);
-  const instText = humanizeInstrument(props.instrument as string | null, props.satellite as string | null);
+  const sensorText = humanizeSensorDetail(
+    props.sensor as string | null,
+    props.instrument as string | null,
+    props.satellite as string | null,
+  );
   const dn = humanizeDayNight(props.daynight as string | null);
   const frpVal = props.frp != null ? Number(props.frp) : null;
   const areaName = (props.area_name as string) || null;
   const locationDesc = describeRiauLocation(coords[1], coords[0], areaName);
 
+  // Check Peatland (KHG) status
+  const peatCheck = props.in_peatland || isCoordinateInPeatland(coords[1], coords[0]).inPeatland;
+  const rawCount = props.raw_detections_count != null ? Number(props.raw_detections_count) : 1;
+
   return `
-    <div style="font-family:'DM Sans',system-ui,sans-serif;min-width:250px;padding:4px">
-      <!-- Title & Location Header -->
+    <div style="font-family:'DM Sans',system-ui,sans-serif;min-width:260px;padding:4px">
+      <!-- Location Header -->
       <div style="margin-bottom:8px;border-bottom:1px solid #e7e5e4;padding-bottom:6px">
-        <div style="font-weight:700;font-size:14px;color:#2c1e18;line-height:1.3">
+        <div style="font-weight:700;font-size:13.5px;color:#1c1917;line-height:1.3">
           ${locationDesc}
         </div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-          <span style="font-size:10.5px;font-weight:700;color:${conf.color};background:${conf.bg};padding:2px 7px;border-radius:999px">
-            Tingkat Kepercayaan: ${conf.label}
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:6px">
+          <!-- Confidence Badge -->
+          <span style="font-size:10px;font-weight:700;color:${conf.color};background:${conf.bg};padding:2px 7px;border-radius:999px">
+            ${conf.label}
           </span>
-          ${dn ? `<span style="font-size:10.5px;font-weight:600;color:#57534e;background:#f5f5f4;padding:2px 6px;border-radius:4px">${dn.text}</span>` : ""}
+          <!-- Day/Night Badge -->
+          ${dn ? `<span style="font-size:10px;font-weight:600;color:#57534e;background:#f5f5f4;padding:2px 6px;border-radius:4px">${dn.text}</span>` : ""}
+          <!-- Peatland KHG Badge -->
+          ${peatCheck ? `<span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;padding:2px 6px;border-radius:4px;border:1px solid #fde68a">Lahan Gambut (KHG)</span>` : ""}
         </div>
       </div>
 
       <!-- Attributes Grid -->
-      <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:11.5px;color:#44403c">
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:11.5px;color:#44403c">
+        <span style="color:#78716c;font-weight:500">Waktu Pantauan</span>
+        <span style="font-weight:600">${formatAcquiredAt(props.acquired_at as string | null)}</span>
+        
         <span style="color:#78716c;font-weight:500">Koordinat</span>
         <span style="font-family:'JetBrains Mono',monospace;font-weight:600">${coords[1].toFixed(4)}°, ${coords[0].toFixed(4)}°</span>
-        
-        <span style="color:#78716c;font-weight:500">Waktu Deteksi</span>
-        <span style="font-weight:600">${formatAcquiredAt(props.acquired_at as string | null)}</span>
         
         <span style="color:#78716c;font-weight:500">Satelit</span>
         <span style="font-weight:600">${satText}</span>
         
-        <span style="color:#78716c;font-weight:500">Sensor</span>
-        <span>${instText}</span>
+        <span style="color:#78716c;font-weight:500">Pemotretan</span>
+        <span style="font-weight:600;color:#8b4513">${sensorText}</span>
+
+        ${rawCount > 1 ? `<span style="color:#78716c;font-weight:500">Titik Serupa</span><span style="font-weight:600">${rawCount} pantauan berdekatan digabung</span>` : ""}
         
-        ${frpVal != null ? `<span style="color:#78716c;font-weight:500">Daya Panas (FRP)</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#b91c1c">${frpVal.toFixed(1)} MW (Megawatt)</span>` : ""}
+        ${frpVal != null ? `<span style="color:#78716c;font-weight:500">Kekuatan Panas</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#b91c1c">${humanizeFRP(frpVal)}</span>` : ""}
       </div>
 
       <!-- Mandatory Trust Disclaimer -->
       <div style="margin-top:8px;padding-top:6px;border-top:1px solid #e7e5e4;font-size:10px;color:#78716c;line-height:1.35">
-        <strong>Pemberitahuan:</strong> Indikasi panas sensor satelit, <strong>BUKAN kebakaran terkonfirmasi</strong>. Verifikasi lapangan diperlukan.
+        <strong>Catatan:</strong> Indikasi suhu panas dari satelit. Bukan kebakaran yang sudah dicek langsung di darat. Pengecekan lapangan tetap diperlukan.
       </div>
     </div>
   `;
@@ -276,7 +247,10 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
       hotspots,
       adminAreas,
       selectedKabupatenId,
+      showHotspots = true,
       showBoundaries = false,
+      showKHG = true,
+      showWind = true,
       loading,
       onHotspotClick,
       onTileStatusChange,
@@ -349,7 +323,6 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         map.addControl(new maplibregl.NavigationControl(), "top-right");
         map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
 
-        // ResizeObserver to ensure MapLibre adjusts whenever container sizes or layout settles
         if (typeof ResizeObserver !== "undefined" && mapContainer.current) {
           resizeObserver = new ResizeObserver(() => {
             map.resize();
@@ -464,10 +437,153 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
       }
     }, [selectedKabupatenId, adminAreas, hotspots, mapLoaded]);
 
+    // Add/update KHG (Kesatuan Hidrologis Gambut) Layer (Modul 3)
+    useEffect(() => {
+      const map = mapRef.current;
+      if (!map || !mapLoaded) return;
+
+      const sourceId = "khg-source";
+      const fillLayerId = "khg-fill";
+      const lineLayerId = "khg-line";
+      const labelLayerId = "khg-label";
+
+      if (map.getLayer(labelLayerId)) map.removeLayer(labelLayerId);
+      if (map.getLayer(lineLayerId)) map.removeLayer(lineLayerId);
+      if (map.getLayer(fillLayerId)) map.removeLayer(fillLayerId);
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+
+      if (!showKHG) return;
+
+      map.addSource(sourceId, {
+        type: "geojson",
+        data: KHG_RIAU_GEOJSON as unknown as GeoJSON.FeatureCollection,
+      });
+
+      const beforeId = map.getLayer("hotspot-clusters") ? "hotspot-clusters" : undefined;
+
+      // Semi-transparent peatland fill (Vivid Amber/Peat tone)
+      map.addLayer(
+        {
+          id: fillLayerId,
+          type: "fill",
+          source: sourceId,
+          paint: {
+            "fill-color": "rgba(217, 119, 6, 0.22)",
+            "fill-outline-color": "#b45309",
+          },
+        },
+        beforeId,
+      );
+
+      // Peatland boundary border
+      map.addLayer(
+        {
+          id: lineLayerId,
+          type: "line",
+          source: sourceId,
+          paint: {
+            "line-color": "#b45309",
+            "line-width": 2.5,
+            "line-dasharray": [4, 2],
+          },
+        },
+        beforeId,
+      );
+
+      // KHG Label
+      map.addLayer(
+        {
+          id: labelLayerId,
+          type: "symbol",
+          source: sourceId,
+          layout: {
+            "text-field": ["get", "nama_khg"],
+            "text-size": 11,
+            "text-allow-overlap": false,
+          },
+          paint: {
+            "text-color": "#7c2d12",
+            "text-halo-color": "#ffffff",
+            "text-halo-width": 2,
+          },
+        },
+        beforeId,
+      );
+    }, [showKHG, mapLoaded]);
+
+    // Add/update Wind Vector Overlay (Modul 3)
+    useEffect(() => {
+      const map = mapRef.current;
+      if (!map || !mapLoaded) return;
+
+      const sourceId = "wind-source";
+      const circleLayerId = "wind-circles";
+      const arrowLayerId = "wind-arrows";
+      const labelLayerId = "wind-labels";
+
+      if (map.getLayer(labelLayerId)) map.removeLayer(labelLayerId);
+      if (map.getLayer(arrowLayerId)) map.removeLayer(arrowLayerId);
+      if (map.getLayer(circleLayerId)) map.removeLayer(circleLayerId);
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+
+      if (!showWind) return;
+
+      map.addSource(sourceId, {
+        type: "geojson",
+        data: generateWindGeoJSON() as unknown as GeoJSON.FeatureCollection,
+      });
+
+      // Distinct circular badge for wind vectors
+      map.addLayer({
+        id: circleLayerId,
+        type: "circle",
+        source: sourceId,
+        paint: {
+          "circle-radius": 13,
+          "circle-color": "#2563eb",
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff",
+        },
+      });
+
+      // Centered directional arrow inside the badge
+      map.addLayer({
+        id: arrowLayerId,
+        type: "symbol",
+        source: sourceId,
+        layout: {
+          "text-field": ["get", "arrow"],
+          "text-size": 15,
+          "text-allow-overlap": true,
+        },
+        paint: {
+          "text-color": "#ffffff",
+        },
+      });
+
+      // Label below badge (e.g. Pekanbaru: 12.5 km/j)
+      map.addLayer({
+        id: labelLayerId,
+        type: "symbol",
+        source: sourceId,
+        layout: {
+          "text-field": ["get", "display_text"],
+          "text-size": 11,
+          "text-offset": [0, 1.4],
+          "text-allow-overlap": true,
+        },
+        paint: {
+          "text-color": "#1e3a8a",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 2.5,
+        },
+      });
+    }, [showWind, mapLoaded]);
+
     // Add/update hotspot source and layers
     useEffect(() => {
       const map = mapRef.current;
-      if (!map || !mapLoaded || !hotspots) return;
+      if (!map || !mapLoaded) return;
 
       const sourceId = "hotspots";
       const clusterLayerId = "hotspot-clusters";
@@ -479,6 +595,8 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
       if (map.getLayer(clusterLayerId)) map.removeLayer(clusterLayerId);
       if (map.getLayer(unclusteredLayerId)) map.removeLayer(unclusteredLayerId);
       if (map.getSource(sourceId)) map.removeSource(sourceId);
+
+      if (!showHotspots || !hotspots) return;
 
       // Add GeoJSON source with clustering
       map.addSource(sourceId, {
@@ -629,7 +747,7 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
       map.on("mouseleave", clusterLayerId, () => {
         if (map) map.getCanvas().style.cursor = "";
       });
-    }, [hotspots, mapLoaded, onHotspotClick]);
+    }, [hotspots, showHotspots, mapLoaded, onHotspotClick]);
 
     // Add/update boundaries layer
     useEffect(() => {
@@ -653,42 +771,53 @@ export const HotspotMap = forwardRef<HotspotMapHandle, HotspotMapProps>(
         data: adminAreas as unknown as GeoJSON.FeatureCollection,
       });
 
-      map.addLayer({
-        id: fillLayerId,
-        type: "fill",
-        source: sourceId,
-        paint: {
-          "fill-color": "rgba(139, 69, 19, 0.06)",
-          "fill-outline-color": "#8b4513",
-        },
-      });
+      const beforeId = map.getLayer("hotspot-clusters") ? "hotspot-clusters" : undefined;
 
-      map.addLayer({
-        id: lineLayerId,
-        type: "line",
-        source: sourceId,
-        paint: {
-          "line-color": "#8b4513",
-          "line-width": 1.5,
-          "line-dasharray": [3, 2],
+      map.addLayer(
+        {
+          id: fillLayerId,
+          type: "fill",
+          source: sourceId,
+          paint: {
+            "fill-color": "rgba(30, 41, 59, 0.08)",
+            "fill-outline-color": "#1e293b",
+          },
         },
-      });
+        beforeId,
+      );
 
-      map.addLayer({
-        id: labelLayerId,
-        type: "symbol",
-        source: sourceId,
-        layout: {
-          "text-field": ["get", "name"],
-          "text-size": 11,
-          "text-allow-overlap": false,
+      map.addLayer(
+        {
+          id: lineLayerId,
+          type: "line",
+          source: sourceId,
+          paint: {
+            "line-color": "#1e293b",
+            "line-width": 2,
+            "line-dasharray": [4, 2],
+          },
         },
-        paint: {
-          "text-color": "#2c1e18",
-          "text-halo-color": "#ffffff",
-          "text-halo-width": 1.5,
+        beforeId,
+      );
+
+      map.addLayer(
+        {
+          id: labelLayerId,
+          type: "symbol",
+          source: sourceId,
+          layout: {
+            "text-field": ["get", "name"],
+            "text-size": 11,
+            "text-allow-overlap": false,
+          },
+          paint: {
+            "text-color": "#0f172a",
+            "text-halo-color": "#ffffff",
+            "text-halo-width": 2,
+          },
         },
-      });
+        beforeId,
+      );
 
       let hoveredId: string | null = null;
 

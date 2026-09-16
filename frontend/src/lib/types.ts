@@ -1,5 +1,5 @@
-// TypeScript types mirroring the Phase 4 backend API contracts.
-// Source of truth: backend/app/api/models.py
+// TypeScript types mirroring the RIAUWATCH API contracts & WebGIS domain models.
+// Source of truth: backend/app/api/models.py & WebGIS extensions
 
 // ---------------------------------------------------------------------------
 // Status
@@ -19,24 +19,33 @@ export interface StatusResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Hotspots (GeoJSON)
+// Hotspots & Unified FIRMS Detections (MODIS + VIIRS)
 // ---------------------------------------------------------------------------
 
+export type SensorType = "VIIRS" | "MODIS" | "MERGED";
+export type ConfidenceCategory = "high" | "nominal" | "low";
+
 export interface HotspotProperties {
+  id?: number | string | null;
   satellite: string;
   instrument: string | null;
   confidence: string | null;
   confidence_value: number | null;
+  confidence_category?: ConfidenceCategory;
   daynight: string | null;
   frp?: number | null;
   acquired_at: string;
   area_name: string | null;
+  kabupaten_id?: number | null;
   hotspot_indication: boolean;
+  sensor?: SensorType;
+  raw_detections_count?: number;
+  in_peatland?: boolean;
 }
 
 export interface HotspotFeature {
   type: "Feature";
-  geometry: { type: "Point"; coordinates: [number, number] };
+  geometry: { type: "Point"; coordinates: [number, number] }; // [lon, lat]
   properties: HotspotProperties;
 }
 
@@ -45,21 +54,25 @@ export interface HotspotsResponse {
   features: HotspotFeature[];
   disclaimer: string;
   count: number;
+  total_raw_count?: number;
+  active_clusters_count?: number;
 }
 
 export interface HotspotSummaryItem {
   kabupaten_id: number;
   kabupaten_name: string;
   count: number;
+  raw_count?: number;
 }
 
 export interface HotspotsSummaryResponse {
   items: HotspotSummaryItem[];
   total: number;
+  total_raw?: number;
 }
 
 // ---------------------------------------------------------------------------
-// Air Quality
+// Air Quality & Health Advisory
 // ---------------------------------------------------------------------------
 
 export interface AQObservation {
@@ -97,7 +110,7 @@ export interface AirQualityHistoryResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Weather
+// Weather & Wind Vector
 // ---------------------------------------------------------------------------
 
 export interface WeatherObservation {
@@ -108,6 +121,8 @@ export interface WeatherObservation {
   precipitation_mm: number | null;
   wind_speed_kmh: number | null;
   wind_direction_deg: number | null;
+  cloud_cover_pct?: number | null;
+  soil_moisture_m3?: number | null;
   age_seconds: number | null;
 }
 
@@ -123,8 +138,16 @@ export interface WeatherForecastResponse {
   forecast: WeatherObservation[];
 }
 
+export interface WindPoint {
+  lat: number;
+  lon: number;
+  name: string;
+  speed_kmh: number;
+  direction_deg: number;
+}
+
 // ---------------------------------------------------------------------------
-// Risk
+// Dual-Index Risk Models
 // ---------------------------------------------------------------------------
 
 export interface RiskAssessment {
@@ -135,6 +158,12 @@ export interface RiskAssessment {
   model_version: string;
   risk_level: string | null;
   score: number | null;
+  fire_hazard_index?: number | null;
+  fire_risk_level?: string | null; // "Rendah" | "Sedang" | "Tinggi" | "Ekstrem"
+  air_quality_hazard_index?: number | null;
+  air_quality_level?: string | null; // "Baik" | "Sedang" | "Tidak Sehat" | "Sangat Tidak Sehat" | "Berbahaya"
+  pm25_value?: number | null;
+  cloud_cover_pct?: number | null;
   factors: Record<string, unknown>;
 }
 
@@ -144,7 +173,7 @@ export interface RiskCurrentResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Administrative Areas (GeoJSON)
+// Administrative Areas (GeoJSON) & KHG
 // ---------------------------------------------------------------------------
 
 export interface AdminAreaProperties {

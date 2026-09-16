@@ -193,7 +193,7 @@ def _limited_app(limit: int) -> FastAPI:
     def ping() -> dict[str, str]:
         return {"pong": "yes"}
 
-    app.add_middleware(RateLimitMiddleware, requests_per_minute=limit)
+    app.add_middleware(RateLimitMiddleware, requests_per_minute=limit)  # type: ignore[arg-type]
     return app
 
 

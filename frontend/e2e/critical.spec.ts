@@ -109,7 +109,7 @@ test("journey 2: map canvas renders", async ({ page }) => {
   expect(box!.height).toBeGreaterThan(0);
 });
 
-// (3) Hotspot layer loads with features: source + layers registered, 14
+// (3) Hotspot layer loads with features: source + layers registered,
 // features plumbed into the layer, sidebar list renders them.
 test("journey 3: hotspot layer loads with features", async ({ page }) => {
   await page.goto("/");
@@ -126,9 +126,9 @@ test("journey 3: hotspot layer loads with features", async ({ page }) => {
   }));
   expect(wired.hasSource).toBe(true);
   expect(wired.layers).toEqual([true, true, true]);
-  expect(wired.featureCount).toBe(15);
-  await expect(page.getByText("Ringkasan Titik Panas")).toBeVisible();
-  await expect(page.getByText("titik panas terdeteksi")).toContainText("15");
+  expect(wired.featureCount).toBe(12);
+  await expect(page.getByText("Titik Panas Terdeteksi")).toBeVisible();
+  await expect(page.getByText("12 Titik", { exact: true })).toBeVisible();
 });
 
 // (4) Hotspot popup opens with the disclaimer. The popup is produced by the
@@ -141,12 +141,12 @@ test("journey 4: hotspot popup shows disclaimer", async ({ page }) => {
   await page.waitForFunction(() => typeof window.__rwShowHotspotPopup === "function", {
     timeout: 30_000,
   });
-  // Pelalawan feature (index 5) — high confidence, known coordinates.
-  const opened = await page.evaluate(() => window.__rwShowHotspotPopup!(5));
+  // Pelalawan feature (index 3 in fused features: -0.2050, 101.8700).
+  const opened = await page.evaluate(() => window.__rwShowHotspotPopup!(3));
   expect(opened).toBe(true);
   const popup = page.locator(".maplibregl-popup");
   await expect(popup).toBeVisible({ timeout: 10_000 });
-  await expect(popup).toContainText("BUKAN kebakaran terkonfirmasi");
+  await expect(popup).toContainText("Pengecekan lapangan tetap diperlukan");
   await expect(popup).toContainText("Kab. Pelalawan");
   await expect(popup).toContainText("101.8700");
 });
@@ -154,20 +154,20 @@ test("journey 4: hotspot popup shows disclaimer", async ({ page }) => {
 // (5) Date/kabupaten/confidence filters change the list.
 test("journey 5: filters change the hotspot list", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("titik panas terdeteksi")).toContainText("15");
+  await expect(page.getByText("12 Titik", { exact: true })).toBeVisible();
 
   // Confidence filter narrows to high-confidence features only.
   await page.locator("select#confidence").selectOption("h");
-  await expect(page.getByText("titik panas terdeteksi")).toContainText("4");
+  await expect(page.getByText("5 Titik", { exact: true })).toBeVisible();
 
   // Reset restores the full list.
   await page.getByRole("button", { name: "Hapus Semua Filter" }).click();
-  await expect(page.getByText("titik panas terdeteksi")).toContainText("15");
+  await expect(page.getByText("12 Titik", { exact: true })).toBeVisible();
 
-  // Kabupaten filter narrows to Kampar (2 features).
+  // Kabupaten filter narrows to Kampar (1 fused feature from 2 raw detections).
   await page.locator("select#kabupaten").selectOption("3");
-  await expect(page.getByText("titik panas terdeteksi")).toContainText("2");
-  await expect(page.getByText("Kab. Kampar").first()).toBeVisible();
+  await expect(page.getByText("1 Titik", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("hotspot-list-items").getByText(/Kampar/).first()).toBeVisible();
 });
 
 // (6) Risk panel shows level + factors in plain friendly Indonesian.
@@ -176,9 +176,9 @@ test("journey 6: risk panel shows level and factors", async ({ page }) => {
   await page.getByRole("tab", { name: "Risiko", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Risiko Kebakaran/i }).first()).toBeVisible();
   await expect(page.getByText("Risiko Tinggi").first()).toBeVisible();
-  await expect(page.getByText("Tingkat Potensi Kebakaran").first()).toBeVisible();
+  await expect(page.getByText("Potensi Api Lokal").first()).toBeVisible();
   await expect(page.getByText("Faktor Penyebab Risiko").first()).toBeVisible();
-  await expect(page.getByText("Titik Panas (7 Hari Terakhir)").first()).toBeVisible();
+  await expect(page.getByText("Kerapatan Titik Panas (48 Jam)").first()).toBeVisible();
 });
 
 // (7) AQ panel shows PM2.5 + ISPU category + timestamp.
@@ -186,7 +186,7 @@ test("journey 7: air quality panel shows PM2.5, ISPU, timestamp", async ({ page 
   await page.goto("/");
   await page.getByRole("tab", { name: "Kualitas Udara" }).click();
   await expect(page.getByRole("button", { name: "PM2.5" }).first()).toBeVisible();
-  await expect(page.getByText("38.5").first()).toBeVisible();
+  await expect(page.getByText("45.5").first()).toBeVisible();
   await expect(page.getByText("Sedang").first()).toBeVisible();
   await expect(page.getByText(/Diperbarui .* lalu/).first()).toBeVisible();
   await expect(page.getByText("Tren PM2.5").first()).toBeVisible();

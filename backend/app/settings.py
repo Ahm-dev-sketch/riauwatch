@@ -1,6 +1,7 @@
 """Application settings using pydantic-settings."""
 
 import json
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

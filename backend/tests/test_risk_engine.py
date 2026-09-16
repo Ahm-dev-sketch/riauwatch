@@ -5,6 +5,7 @@ import pytest
 from app.risk import config as C
 from app.risk.engine import (
     FactorInput,
+    compute_aq_hazard,
     compute_risk,
     hotspot_reason,
     humidity_reason,
@@ -249,3 +250,46 @@ class TestConfigSanity:
             assert xs == sorted(xs), name
             for _, y in table:
                 assert 0 <= y <= 100, name
+
+
+class TestAirQualityHazard:
+    def test_none_handling(self):
+        idx, label = compute_aq_hazard(None)
+        assert idx is None
+        assert label is None
+
+    def test_baik_category(self):
+        idx, label = compute_aq_hazard(12.0)
+        assert label == "Baik"
+        assert idx is not None and 0 <= idx <= 20.0
+
+    def test_sedang_category(self):
+        idx, label = compute_aq_hazard(35.0)
+        assert label == "Sedang"
+        assert idx is not None and 20.0 < idx <= 50.0
+
+    def test_tidak_sehat_category(self):
+        idx, label = compute_aq_hazard(75.0)
+        assert label == "Tidak Sehat"
+        assert idx is not None and 50.0 < idx <= 75.0
+
+    def test_sangat_tidak_sehat_category(self):
+        idx, label = compute_aq_hazard(180.0)
+        assert label == "Sangat Tidak Sehat"
+        assert idx is not None and 75.0 < idx <= 90.0
+
+    def test_berbahaya_category(self):
+        idx, label = compute_aq_hazard(300.0)
+        assert label == "Berbahaya"
+        assert idx is not None and idx > 90.0
+
+    def test_dual_index_in_compute_risk(self):
+        result = compute_risk(WORKED_FACTORS, pm25_value=68.5)
+        assert result.fire_hazard_index == 83.1
+        assert result.fire_risk_level == "Sangat Tinggi"
+        assert result.air_quality_hazard_index is not None
+        assert result.air_quality_level == "Tidak Sehat"
+        assert result.pm25_value == 68.5
+        d = result.to_dict()
+        assert d["fire_hazard_index"] == 83.1
+        assert d["air_quality_level"] == "Tidak Sehat"

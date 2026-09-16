@@ -6,12 +6,12 @@ import type { AirQualityLatestResponse, AirQualityHistoryResponse, AQStationLate
 import { MockBadge } from "./MockBadge";
 
 // ---------------------------------------------------------------------------
-// ISPU Category Breakpoint Table (Indonesian Standard — PM2.5)
-// Source: Peraturan Pemerintah No. 22/2021 tentang Perlindungan dan Pengelolaan
-// Lingkungan Hidup, referensi standar ISPU — KLHK
+// ISPU Category Breakpoint Table (Indonesian Standard — PM2.5 & PM10)
+// Source: Peraturan Pemerintah No. 22/2021 tentang Penyelenggaraan Perlindungan
+// dan Pengelolaan Lingkungan Hidup, Lampiran Indeks Standar Pencemar Udara (ISPU) - KLHK
 // ---------------------------------------------------------------------------
 
-interface ISPUBreakpoint {
+export interface ISPUBreakpoint {
   label: string;
   min: number;
   max: number;
@@ -21,19 +21,17 @@ interface ISPUBreakpoint {
 }
 
 // PM2.5 breakpoints (ug/m3) based on Indonesian ISPU standard
-const ISPU_PM25: ISPUBreakpoint[] = [
+export const ISPU_PM25: ISPUBreakpoint[] = [
   {
     label: "Baik",
     min: 0,
     max: 15.5,
-    color: "text-rw-green-700",
+    color: "text-rw-green-800",
     bgColor: "bg-rw-green-100",
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-        <line x1="9" y1="9" x2="9.01" y2="9" />
-        <line x1="15" y1="9" x2="15.01" y2="9" />
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+        <polyline points="22 4 12 14.01 9 11.01" />
       </svg>
     ),
   },
@@ -41,14 +39,13 @@ const ISPU_PM25: ISPUBreakpoint[] = [
     label: "Sedang",
     min: 15.6,
     max: 55.4,
-    color: "text-rw-orange-600",
-    bgColor: "bg-rw-orange-100",
+    color: "text-amber-800",
+    bgColor: "bg-amber-100",
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
         <circle cx="12" cy="12" r="10" />
-        <line x1="8" y1="15" x2="16" y2="15" />
-        <line x1="9" y1="9" x2="9.01" y2="9" />
-        <line x1="15" y1="9" x2="15.01" y2="9" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
     ),
   },
@@ -56,14 +53,13 @@ const ISPU_PM25: ISPUBreakpoint[] = [
     label: "Tidak Sehat",
     min: 55.5,
     max: 150.4,
-    color: "text-rw-red-600",
+    color: "text-rw-red-700",
     bgColor: "bg-rw-red-100",
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M16 16s-1.5-2-4-2-4 2-4 2" />
-        <line x1="9" y1="9" x2="9.01" y2="9" />
-        <line x1="15" y1="9" x2="15.01" y2="9" />
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
       </svg>
     ),
   },
@@ -71,13 +67,13 @@ const ISPU_PM25: ISPUBreakpoint[] = [
     label: "Sangat Tidak Sehat",
     min: 150.5,
     max: 250.4,
-    color: "text-purple-700",
+    color: "text-purple-800",
     bgColor: "bg-purple-100",
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+        <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
     ),
   },
@@ -85,32 +81,30 @@ const ISPU_PM25: ISPUBreakpoint[] = [
     label: "Berbahaya",
     min: 250.5,
     max: Infinity,
-    color: "text-red-900",
+    color: "text-red-950",
     bgColor: "bg-red-200",
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+        <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" />
+        <line x1="15" y1="9" x2="9" y2="15" />
+        <line x1="9" y1="9" x2="15" y2="15" />
       </svg>
     ),
   },
 ];
 
 // PM10 breakpoints (ug/m3) based on Indonesian ISPU standard
-const ISPU_PM10: ISPUBreakpoint[] = [
+export const ISPU_PM10: ISPUBreakpoint[] = [
   {
     label: "Baik",
     min: 0,
     max: 50,
-    color: "text-rw-green-700",
+    color: "text-rw-green-800",
     bgColor: "bg-rw-green-100",
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-        <line x1="9" y1="9" x2="9.01" y2="9" />
-        <line x1="15" y1="9" x2="15.01" y2="9" />
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+        <polyline points="22 4 12 14.01 9 11.01" />
       </svg>
     ),
   },
@@ -118,14 +112,13 @@ const ISPU_PM10: ISPUBreakpoint[] = [
     label: "Sedang",
     min: 51,
     max: 150,
-    color: "text-rw-orange-600",
-    bgColor: "bg-rw-orange-100",
+    color: "text-amber-800",
+    bgColor: "bg-amber-100",
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
         <circle cx="12" cy="12" r="10" />
-        <line x1="8" y1="15" x2="16" y2="15" />
-        <line x1="9" y1="9" x2="9.01" y2="9" />
-        <line x1="15" y1="9" x2="15.01" y2="9" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
     ),
   },
@@ -133,14 +126,13 @@ const ISPU_PM10: ISPUBreakpoint[] = [
     label: "Tidak Sehat",
     min: 151,
     max: 350,
-    color: "text-rw-red-600",
+    color: "text-rw-red-700",
     bgColor: "bg-rw-red-100",
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M16 16s-1.5-2-4-2-4 2-4 2" />
-        <line x1="9" y1="9" x2="9.01" y2="9" />
-        <line x1="15" y1="9" x2="15.01" y2="9" />
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
       </svg>
     ),
   },
@@ -148,13 +140,13 @@ const ISPU_PM10: ISPUBreakpoint[] = [
     label: "Sangat Tidak Sehat",
     min: 351,
     max: 420,
-    color: "text-purple-700",
+    color: "text-purple-800",
     bgColor: "bg-purple-100",
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+        <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
     ),
   },
@@ -162,19 +154,19 @@ const ISPU_PM10: ISPUBreakpoint[] = [
     label: "Berbahaya",
     min: 421,
     max: Infinity,
-    color: "text-red-900",
+    color: "text-red-950",
     bgColor: "bg-red-200",
     icon: (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+        <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" />
+        <line x1="15" y1="9" x2="9" y2="15" />
+        <line x1="9" y1="9" x2="15" y2="15" />
       </svg>
     ),
   },
 ];
 
-function getISPUCategory(value: number, breakpoints: ISPUBreakpoint[]): ISPUBreakpoint {
+export function getISPUCategory(value: number, breakpoints: ISPUBreakpoint[]): ISPUBreakpoint {
   for (const bp of breakpoints) {
     if (value >= bp.min && value <= bp.max) return bp;
   }
@@ -186,6 +178,98 @@ function formatAge(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   if (hours < 24) return `${hours} jam lalu`;
   return `${Math.floor(hours / 24)} hari lalu`;
+}
+
+// ---------------------------------------------------------------------------
+// Modul 4: Panduan Aksi Kesehatan Berbasis ISPU/PM2.5 (Actionable Health Advisory)
+// ---------------------------------------------------------------------------
+
+function HealthAdvisoryCard({ categoryLabel }: { categoryLabel: string }) {
+  if (categoryLabel === "Baik") {
+    return (
+      <div className="rounded-xl border border-rw-green-200 bg-rw-green-50/70 p-4 space-y-2">
+        <div className="flex items-center gap-2 text-rw-green-900 font-bold text-sm">
+          <svg className="h-5 w-5 text-rw-green-700 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          <span>Panduan Kesehatan: Kondisi Udara Bersih &amp; Aman</span>
+        </div>
+        <p className="text-xs text-rw-green-950 leading-relaxed">
+          Kualitas udara sangat baik dan tidak berisiko bagi kesehatan. Seluruh masyarakat, anak-anak, dan lansia dapat leluasa beraktivitas fisik di luar ruangan tanpa pembatasan.
+        </p>
+      </div>
+    );
+  }
+
+  if (categoryLabel === "Sedang") {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 space-y-2">
+        <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
+          <svg className="h-5 w-5 text-amber-700 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>Panduan Kesehatan: Peringatan Kelompok Sensitif &amp; Rentan</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-amber-950 pt-1">
+          <div className="rounded-lg bg-white/70 p-2.5 border border-amber-100">
+            <strong className="block text-amber-900 mb-0.5">Kelompok Rentan:</strong>
+            Anak-anak, lansia, wanita hamil, dan penderita asma/paru disarankan membatasi aktivitas fisik berat di luar ruang.
+          </div>
+          <div className="rounded-lg bg-white/70 p-2.5 border border-amber-100">
+            <strong className="block text-amber-900 mb-0.5">Masyarakat Umum:</strong>
+            Masih dapat beraktivitas normal, namun disarankan minum air yang cukup dan memantau perkembangan asap.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (categoryLabel === "Tidak Sehat" || categoryLabel === "Sangat Tidak Sehat") {
+    return (
+      <div className="rounded-xl border border-rw-red-300 bg-rw-red-50 p-4 space-y-2.5">
+        <div className="flex items-center gap-2 text-rw-red-900 font-bold text-sm">
+          <svg className="h-5 w-5 text-rw-red-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          <span>Protokol Proteksi: Kualitas Udara {categoryLabel.toUpperCase()}</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-rw-red-950">
+          <div className="rounded-lg bg-white/80 p-2.5 border border-rw-red-200">
+            <strong className="block text-rw-red-800 mb-0.5">Wajib Masker N95:</strong>
+            Gunakan masker respiratori standar (N95 / KN95 / KF94) jika terpaksa keluar ruangan.
+          </div>
+          <div className="rounded-lg bg-white/80 p-2.5 border border-rw-red-200">
+            <strong className="block text-rw-red-800 mb-0.5">Tutup Ventilasi Rumah:</strong>
+            Tutup rapat pintu dan jendela agar partikel asap dan abu gambut tidak masuk ke dalam rumah.
+          </div>
+          <div className="rounded-lg bg-white/80 p-2.5 border border-rw-red-200">
+            <strong className="block text-rw-red-800 mb-0.5">Penyaring Udara:</strong>
+            Nyalakan air purifier berfilter HEPA dan hindari olahraga di luar ruangan hingga udara membaik.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Berbahaya
+  return (
+    <div className="rounded-xl border border-red-500 bg-red-100 p-4 space-y-2.5">
+      <div className="flex items-center gap-2 text-red-950 font-bold text-sm">
+        <svg className="h-5 w-5 text-red-700 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span>STATUS DARURAT: Kualitas Udara Berbahaya</span>
+      </div>
+      <p className="text-xs text-red-950 leading-relaxed font-medium">
+        Hentikan seluruh aktivitas di luar ruangan. Seluruh warga diimbau mengisolasi diri di dalam ruangan tertutup berfilter udara. Segera hubungi fasilitas kesehatan atau posko evakuasi udara bersih terdekat jika mengalami sesak napas, pusing hebat, atau iritasi mata/tenggorokan akut.
+      </p>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -253,7 +337,7 @@ function AQHistoryChart({ data, pollutant }: { data: AQHistoryPoint[]; pollutant
   return (
     <div className="w-full space-y-2">
       {/* Interactive Tooltip & Detail Bar on Hover */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 bg-rw-smoke-50 rounded-lg border border-rw-smoke-200 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-rw-smoke-50 rounded-lg border border-rw-smoke-200 text-xs">
         <div className="flex items-center gap-2">
           <span className="text-rw-smoke-500 font-medium">
             {hoveredPoint ? "Waktu Pengamatan:" : "Detail:"}
@@ -271,7 +355,7 @@ function AQHistoryChart({ data, pollutant }: { data: AQHistoryPoint[]; pollutant
               </span>
               <span className="text-[10px] text-rw-smoke-500">{hoveredPoint.unit}</span>
             </div>
-            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${hoveredCategory.bgColor} ${hoveredCategory.color}`}>
+            <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${hoveredCategory.bgColor} ${hoveredCategory.color}`}>
               {hoveredCategory.icon}
               <span>{hoveredCategory.label}</span>
             </div>
@@ -313,11 +397,11 @@ function AQHistoryChart({ data, pollutant }: { data: AQHistoryPoint[]; pollutant
             </g>
           ))}
 
-          {/* Area fill — peat-sienna tint */}
+          {/* Area fill */}
           <path d={areaD} fill="rgba(139, 69, 19, 0.08)" />
 
-          {/* Line — peat-sienna */}
-          <path d={pathD} fill="none" stroke="#8b4513" strokeWidth="2" strokeLinejoin="round" />
+          {/* Line */}
+          <path d={pathD} fill="none" stroke="#8b4513" strokeWidth="2.5" strokeLinejoin="round" />
 
           {/* Data points */}
           {data.map((p, i) => (
@@ -382,7 +466,7 @@ function AQHistoryChart({ data, pollutant }: { data: AQHistoryPoint[]; pollutant
             fill="#718096"
             transform={`rotate(-90, 12, ${height / 2})`}
           >
-            {pollutantLabel} (ug/m3)
+            {pollutantLabel} (µg/m³)
           </text>
         </svg>
       </div>
@@ -462,7 +546,7 @@ function StationCard({
               }}
               className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
                 selectedPollutant === p
-                  ? "bg-rw-sienna-600 text-white shadow-2xs"
+                  ? "bg-rw-sienna-600 text-white shadow-2xs font-bold"
                   : "bg-rw-smoke-100 text-rw-smoke-700 hover:bg-rw-smoke-200"
               }`}
             >
@@ -492,7 +576,7 @@ function StationCard({
           {currentObs ? `Diperbarui ${formatAge(currentObs.age_seconds)}` : ""}
         </span>
         <span className="text-[11px] text-rw-sienna-700 font-medium">
-          {isSelected ? "✓ Sedang Ditampilkan" : "Klik untuk Lihat Tren →"}
+          {isSelected ? "Tersorot" : "Lihat Tren"}
         </span>
       </div>
 
@@ -520,7 +604,6 @@ export function AirQualityPanel() {
   const [selectedStation, setSelectedStation] = useState<number | null>(null);
   const [selectedPollutant, setSelectedPollutant] = useState("pm25");
   const [stale, setStale] = useState(false);
-
   const [retryCount, setRetryCount] = useState(0);
 
   // Load latest air quality data
@@ -533,11 +616,9 @@ export function AirQualityPanel() {
         const res = await getAirQualityLatest();
         if (cancelled) return;
         setData(res);
-        // Auto-select first station
         if (res.stations.length > 0) {
           setSelectedStation(res.stations[0].station_id);
         }
-        // Check staleness
         const oldestObs = res.stations.flatMap((s) => s.observations).reduce((oldest, obs) => {
           return obs.age_seconds > oldest ? obs.age_seconds : oldest;
         }, 0);
@@ -566,7 +647,7 @@ export function AirQualityPanel() {
         });
         if (!cancelled) setHistory(res);
       } catch {
-        // History load failure is non-critical
+        // Non-critical
       }
     }
     load();
@@ -630,9 +711,13 @@ export function AirQualityPanel() {
   }
 
   const activeStationObj = data.stations.find((s) => s.station_id === selectedStation) ?? data.stations[0];
+  const activeObs = activeStationObj.observations.find((o) => o.pollutant === selectedPollutant) ?? activeStationObj.observations[0];
+  const breakpoints = selectedPollutant === "pm25" ? ISPU_PM25 : ISPU_PM10;
+  const currentCategory = activeObs ? getISPUCategory(activeObs.value, breakpoints) : ISPU_PM25[0];
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-rw-peat-900 flex items-center gap-2 font-display">
@@ -660,6 +745,9 @@ export function AirQualityPanel() {
           </p>
         </div>
       )}
+
+      {/* Modul 4: Actionable Health Advisory Card */}
+      <HealthAdvisoryCard categoryLabel={currentCategory.label} />
 
       {/* Interactive 24-Hour Trend Chart Card with Station & Pollutant Switcher */}
       {history && history.points.length > 0 && (
@@ -738,7 +826,7 @@ export function AirQualityPanel() {
       {/* Station list header */}
       <div className="pt-2">
         <h3 className="text-sm font-bold text-rw-peat-900 mb-2">
-          Daftar Stasiun Pemantau & Pembacaan Terkini
+          Daftar Stasiun Pemantau &amp; Pembacaan Terkini
         </h3>
         <p className="text-xs text-rw-smoke-500 mb-3">
           Klik pada salah satu stasiun di bawah untuk melihat grafik tren dan riwayat 24 jamnya.

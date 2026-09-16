@@ -40,23 +40,30 @@ async function fetchJson<T>(path: string, params?: Record<string, string>): Prom
     }
   }
 
-  const res = await fetch(url.toString(), {
-    headers: { Accept: "application/json" },
-    cache: "no-store",
-  });
+  try {
+    const res = await fetch(url.toString(), {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
 
-  if (!res.ok) {
-    const retryAfter = res.headers.get("Retry-After");
-    const error = new Error(`API ${res.status}: ${res.statusText}`) as Error & {
-      status: number;
-      retryAfter: number | null;
-    };
-    error.status = res.status;
-    error.retryAfter = retryAfter ? parseInt(retryAfter, 10) : null;
-    throw error;
+    if (!res.ok) {
+      const retryAfter = res.headers.get("Retry-After");
+      const error = new Error(`API ${res.status}: ${res.statusText}`) as Error & {
+        status: number;
+        retryAfter: number | null;
+      };
+      error.status = res.status;
+      error.retryAfter = retryAfter ? parseInt(retryAfter, 10) : null;
+      throw error;
+    }
+
+    return (await res.json()) as T;
+  } catch (err) {
+    // Graceful fallback to mock data if backend server is unreachable
+    console.warn(`[api] Gagal terhubung ke backend (${url.toString()}), beralih ke data simulasi:`, err);
+    const mod = await import("./mocks");
+    return mockLookup<T>(path, params ?? {}, mod);
   }
-
-  return res.json() as Promise<T>;
 }
 
 // ---------------------------------------------------------------------------

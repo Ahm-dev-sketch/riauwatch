@@ -39,6 +39,7 @@ class StatusResponse(BaseModel):
 
 class HotspotProperties(BaseModel):
     """Properties for a hotspot GeoJSON feature."""
+    id: int | None = None
     satellite: str
     instrument: str | None = None
     confidence: str | None = None
@@ -48,6 +49,9 @@ class HotspotProperties(BaseModel):
     acquired_at: datetime
     area_name: str | None = None
     hotspot_indication: bool = True
+    sensor: str | None = None
+    raw_detections_count: int | None = None
+    in_peatland: bool | None = None
 
     model_config = ConfigDict(extra="allow")
 
@@ -146,6 +150,8 @@ class WeatherObservationResponse(BaseModel):
     precipitation_mm: float | None = None
     wind_speed_kmh: float | None = None
     wind_direction_deg: float | None = None
+    cloud_cover_pct: float | None = None
+    soil_moisture_m3: float | None = None
     age_seconds: int | None = None  # only for current (non-forecast)
 
 
@@ -176,6 +182,11 @@ class RiskAssessmentResponse(BaseModel):
     model_version: str
     risk_level: str | None = None
     score: float | None = None
+    fire_hazard_index: float | None = None
+    fire_risk_level: str | None = None
+    air_quality_hazard_index: float | None = None
+    air_quality_level: str | None = None
+    pm25_value: float | None = None
     factors: dict
 
 

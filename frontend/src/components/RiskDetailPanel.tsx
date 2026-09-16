@@ -262,16 +262,21 @@ function RiskFactors({ factors }: { factors: Record<string, unknown> }) {
 }
 
 // ---------------------------------------------------------------------------
-// Risk Card — full detail for one area
+// Risk Card — full detail for one area with Dual-Index Architecture
 // ---------------------------------------------------------------------------
 
 function RiskCard({ assessment }: { assessment: RiskAssessment }) {
   const visual = getRiskVisual(assessment.risk_level);
-  const displayScore = normalizeScore(assessment.score);
+  const displayScore = normalizeScore(assessment.fire_hazard_index ?? assessment.score);
+  const fireLevel = assessment.fire_risk_level || (displayScore && displayScore >= 75 ? "Ekstrem" : displayScore && displayScore >= 50 ? "Tinggi" : displayScore && displayScore >= 25 ? "Sedang" : "Rendah");
+  
+  const aqLevel = assessment.air_quality_level || "Sedang";
+  const pm25Val = assessment.pm25_value ?? null;
+  const aqIndex = assessment.air_quality_hazard_index != null ? Math.round(assessment.air_quality_hazard_index) : (pm25Val ? Math.round(pm25Val) : null);
 
   return (
     <div
-      className={`rw-instrument-panel rounded-xl border ${visual.borderColor} bg-white p-5 shadow-sm`}
+      className={`rw-instrument-panel rounded-xl border ${visual.borderColor} bg-white p-5 shadow-sm space-y-4`}
       style={{
         borderLeftColor:
           visual.color.includes("red")
@@ -286,11 +291,11 @@ function RiskCard({ assessment }: { assessment: RiskAssessment }) {
       }}
     >
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 border-b border-rw-smoke-100 pb-3">
         <div>
           <h3 className="text-base font-bold text-rw-peat-900">{assessment.area_name}</h3>
           <p className="text-xs text-rw-smoke-500 mt-0.5">
-            {humanizeHorizon(assessment.horizon)} ·{" "}
+            {humanizeHorizon(assessment.horizon)} &middot;{" "}
             {new Date(assessment.assessed_for).toLocaleString("id-ID", {
               day: "numeric",
               month: "short",
@@ -300,48 +305,88 @@ function RiskCard({ assessment }: { assessment: RiskAssessment }) {
             })}
           </p>
         </div>
-        <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${visual.bgColor} ${visual.color}`}>
+        <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${visual.bgColor} ${visual.color}`}>
           {visual.icon}
-          {visual.label}
+          <span>{visual.label}</span>
         </div>
       </div>
 
-      {/* Score bar */}
-      {displayScore != null && (
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-medium text-rw-smoke-600">Tingkat Potensi Kebakaran</span>
-            <span className="rw-readout text-xs font-bold text-rw-peat-900">
-              {displayScore}%
+      {/* Dual-Index Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Index 1: Fire Hazard */}
+        <div className="rounded-xl border border-rw-smoke-200 bg-rw-smoke-50/60 p-3.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-rw-smoke-800 flex items-center gap-1.5">
+              <svg className="h-4 w-4 text-rw-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z" />
+              </svg>
+              Potensi Api Lokal
+            </span>
+            <span className="text-xs font-bold text-rw-red-700 bg-rw-red-100 px-2 py-0.5 rounded">
+              {fireLevel}
             </span>
           </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-rw-smoke-100">
-            <div
-              className={`h-full rounded-full transition-all ${
-                visual.color.includes("red")
-                  ? "bg-rw-red-600"
-                  : visual.color.includes("purple")
-                    ? "bg-purple-600"
-                    : visual.color.includes("orange")
-                      ? "bg-rw-orange-600"
-                      : "bg-rw-mangrove-600"
-              }`}
-              style={{ width: `${displayScore}%` }}
-              role="progressbar"
-              aria-valuenow={displayScore}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`Tingkat potensi kebakaran: ${displayScore}%`}
-            />
-          </div>
+          {displayScore != null && (
+            <div>
+              <div className="flex items-center justify-between text-[11px] text-rw-smoke-600 mb-1">
+                <span>Indeks Bahaya Api</span>
+                <span className="rw-readout font-bold text-rw-peat-900">{displayScore}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-rw-smoke-200">
+                <div
+                  className="h-full rounded-full bg-rw-red-600 transition-all"
+                  style={{ width: `${displayScore}%` }}
+                />
+              </div>
+            </div>
+          )}
+          <p className="text-[11px] text-rw-smoke-500 leading-snug">
+            Mengukur konsentrasi titik panas aktif satelit, kekeringan gambut, dan cuaca di wilayah ini.
+          </p>
         </div>
-      )}
 
-      {/* Factors */}
+        {/* Index 2: Air Quality Hazard */}
+        <div className="rounded-xl border border-rw-smoke-200 bg-rw-smoke-50/60 p-3.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-rw-smoke-800 flex items-center gap-1.5">
+              <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M17.5 19H9a7 7 0 116.71-9h1.79a4.5 4.5 0 110 9z" />
+              </svg>
+              Paparan Kualitas Udara
+            </span>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+              aqLevel === "Tidak Sehat" || aqLevel === "Sangat Tidak Sehat" ? "bg-rw-red-100 text-rw-red-700" : aqLevel === "Sedang" ? "bg-amber-100 text-amber-800" : "bg-rw-mangrove-100 text-rw-mangrove-800"
+            }`}>
+              {aqLevel}
+            </span>
+          </div>
+          <div>
+            <div className="flex items-center justify-between text-[11px] text-rw-smoke-600 mb-1">
+              <span>Konsentrasi PM2.5 / ISPU</span>
+              <span className="rw-readout font-bold text-rw-peat-900">{pm25Val ? `${Math.round(pm25Val)} µg/m³` : (aqIndex ? `${aqIndex}%` : "-")}</span>
+            </div>
+            {aqIndex != null && (
+              <div className="h-2 overflow-hidden rounded-full bg-rw-smoke-200">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    aqLevel === "Tidak Sehat" || aqLevel === "Sangat Tidak Sehat" ? "bg-rw-red-600" : "bg-amber-500"
+                  }`}
+                  style={{ width: `${Math.min(100, aqIndex)}%` }}
+                />
+              </div>
+            )}
+          </div>
+          <p className="text-[11px] text-rw-smoke-500 leading-snug">
+            Merefleksikan paparan kabut asap (termasuk asap kiriman lintas wilayah) dan dampak kesehatan.
+          </p>
+        </div>
+      </div>
+
+      {/* Factors Breakdown */}
       <RiskFactors factors={assessment.factors} />
 
       {/* Human-friendly note */}
-      <div className="mt-4 pt-2.5 border-t border-rw-smoke-100">
+      <div className="pt-2.5 border-t border-rw-smoke-100">
         <p className="text-[11px] text-rw-smoke-500 leading-relaxed">
           <strong className="text-rw-smoke-700">Peringatan Dini:</strong> Analisis dihitung otomatis dari data satelit dan pantauan cuaca untuk deteksi dini karhutla. Kondisi di lapangan tetap memerlukan verifikasi langsung.
         </p>

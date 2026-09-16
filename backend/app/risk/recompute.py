@@ -95,6 +95,16 @@ def _resolve_source_id(session: Session, key: str) -> int:
     return int(row)
 
 
+_AQ_NEAREST_SQL = text("""
+    SELECT o.value AS pm25
+    FROM air_quality_observations o
+    JOIN monitoring_stations s ON s.id = o.station_id
+    WHERE o.pollutant = 'pm25'
+    ORDER BY s.geom <-> (SELECT centroid FROM administrative_areas WHERE id = :area_id), o.observed_at DESC
+    LIMIT 1
+""")
+
+
 def _assess_area(
     session: Session,
     area_id: int,
@@ -117,6 +127,9 @@ def _assess_area(
         _WEATHER_SQL, {"area_id": area_id, "t7": t7d, "t24": t24, "now": ref}
     ).mappings().first()
     w: dict[str, Any] = dict(weather) if weather else {}
+
+    aq_pm25 = session.execute(_AQ_NEAREST_SQL, {"area_id": area_id}).scalar()
+    pm25_val = _num(aq_pm25)
 
     inputs: list[FactorInput] = []
     if firms_fresh and area_km2 > 0:
@@ -189,7 +202,7 @@ def _assess_area(
         inputs.append(FactorInput(name="fuel_index", value=None,
                                   reason=unavailable_reason("fuel_index")))
 
-    return compute_risk(inputs, observed_from=t7d, observed_to=ref)
+    return compute_risk(inputs, observed_from=t7d, observed_to=ref, pm25_value=pm25_val)
 
 
 def _upsert(session: Session, area_id: int, assessed_for: datetime, result: RiskResult) -> None:

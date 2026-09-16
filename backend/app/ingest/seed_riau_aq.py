@@ -1,8 +1,10 @@
 """Seed authentic Riau province air quality monitoring stations (SPKUA) and 24h observations."""
 
-from datetime import datetime, UTC, timedelta
 import json
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import text
+
 from app.db import get_session_factory
 
 RIAU_STATIONS = [

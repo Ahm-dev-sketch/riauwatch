@@ -1,7 +1,7 @@
 """FastAPI app factory for the RIAUWATCH API."""
 
+from collections.abc import Callable
 from contextlib import asynccontextmanager
-from typing import Callable
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request, Response
@@ -48,7 +48,8 @@ def create_app() -> FastAPI:
                 if clean_path and clean_path != "/api/index.py" and not clean_path.endswith(".py"):
                     request.scope["path"] = clean_path
                     break
-        return await call_next(request)
+        response: Response = await call_next(request)
+        return response
 
     # CORS middleware
     app.add_middleware(

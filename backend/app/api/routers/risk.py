@@ -35,19 +35,35 @@ def get_risk_current(
     if kabupaten_id is not None:
         params["kab"] = kabupaten_id
     rows = db.execute(text(_RISK_SQL.format(area_filter=area_filter)), params).mappings().all()
-    assessments = [
-        m.RiskAssessmentResponse(
-            area_id=int(row["area_id"]),
-            area_name=str(row["area_name"]),
-            assessed_for=row["assessed_for"],  # type: ignore[arg-type]
-            horizon=str(row["horizon"]),
-            model_version=str(row["model_version"]),
-            risk_level=row["risk_level"],  # type: ignore[arg-type]
-            score=None if row["score"] is None else float(row["score"]),  # type: ignore[arg-type]
-            factors=dict(row["factors"]) if row["factors"] is not None else {},
+    assessments = []
+    for row in rows:
+        factors_dict = dict(row["factors"]) if row["factors"] is not None else {}
+        fire_idx = factors_dict.get("fire_hazard_index")
+        if fire_idx is None and row["score"] is not None:
+            fire_idx = float(row["score"])
+
+        fire_lvl = factors_dict.get("fire_risk_level")
+        if not fire_lvl and row["risk_level"]:
+            lvl_map = {"extreme": "Ekstrem", "very_high": "Sangat Tinggi", "high": "Tinggi", "moderate": "Sedang", "low": "Rendah"}
+            fire_lvl = lvl_map.get(str(row["risk_level"]).lower(), "Rendah")
+
+        assessments.append(
+            m.RiskAssessmentResponse(
+                area_id=int(row["area_id"]),
+                area_name=str(row["area_name"]),
+                assessed_for=row["assessed_for"],  # type: ignore[arg-type]
+                horizon=str(row["horizon"]),
+                model_version=str(row["model_version"]),
+                risk_level=row["risk_level"],  # type: ignore[arg-type]
+                score=None if row["score"] is None else float(row["score"]),  # type: ignore[arg-type]
+                fire_hazard_index=float(fire_idx) if fire_idx is not None else None,
+                fire_risk_level=str(fire_lvl) if fire_lvl else None,
+                air_quality_hazard_index=float(factors_dict["air_quality_hazard_index"]) if factors_dict.get("air_quality_hazard_index") is not None else None,
+                air_quality_level=str(factors_dict["air_quality_level"]) if factors_dict.get("air_quality_level") else None,
+                pm25_value=float(factors_dict["pm25_value"]) if factors_dict.get("pm25_value") is not None else None,
+                factors=factors_dict,
+            )
         )
-        for row in rows
-    ]
     if not assessments:
         return m.RiskCurrentResponse(assessments=[], note=RISK_NOT_YET_COMPUTED)
     return m.RiskCurrentResponse(assessments=assessments, note=None)
