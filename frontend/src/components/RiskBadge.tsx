@@ -1,7 +1,9 @@
-import type { RiskAssessment } from "@/lib/types";
+import type { RiskAssessment, AQStationLatest } from "@/lib/types";
+import { convertPm25, getPm25ForArea } from "@/lib/aqi";
 
 interface RiskBadgeProps {
   assessment: RiskAssessment | null;
+  stations?: AQStationLatest[] | null;
   compact?: boolean;
 }
 
@@ -49,7 +51,7 @@ function normalizeScore(score: number | null): number | null {
   return Math.min(100, Math.max(0, Math.round(val)));
 }
 
-export function RiskBadge({ assessment, compact = false }: RiskBadgeProps) {
+export function RiskBadge({ assessment, stations, compact = false }: RiskBadgeProps) {
   if (!assessment) {
     return (
       <div
@@ -74,9 +76,10 @@ export function RiskBadge({ assessment, compact = false }: RiskBadgeProps) {
   const fireLevel = assessment.fire_risk_level || (fireScore && fireScore >= 75 ? "Ekstrem" : fireScore && fireScore >= 50 ? "Tinggi" : fireScore && fireScore >= 25 ? "Sedang" : "Rendah");
   const fireTheme = getFireRiskColor(fireLevel);
 
-  const aqLevel = assessment.air_quality_level || "Sedang";
+  const resolvedPm25 = assessment.pm25_value ?? getPm25ForArea(assessment.area_name, stations);
+  const aqResult = convertPm25(resolvedPm25);
+  const aqLevel = assessment.air_quality_level || aqResult.ispu.category;
   const aqTheme = getAirQualityColor(aqLevel);
-  const pm25Val = assessment.pm25_value ?? null;
 
   return (
     <div
@@ -140,9 +143,7 @@ export function RiskBadge({ assessment, compact = false }: RiskBadgeProps) {
           </div>
           <div className="flex items-baseline justify-between gap-1 mt-0.5">
             <span className={`text-xs font-bold truncate ${aqTheme.text}`}>{aqLevel}</span>
-            {pm25Val != null && (
-              <span className="rw-readout text-[10.5px] font-semibold text-rw-smoke-600">{Math.round(pm25Val)} µg</span>
-            )}
+            <span className="rw-readout text-[10.5px] font-semibold text-rw-smoke-600">{Math.round(resolvedPm25)} µg</span>
           </div>
         </div>
       </div>

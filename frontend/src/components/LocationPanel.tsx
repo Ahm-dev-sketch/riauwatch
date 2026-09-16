@@ -4,6 +4,9 @@ import { useState, useCallback } from "react";
 import { lookupAdministrativeArea, getAirQualityLatest, getHotspots, getRiskCurrent, getWeatherCurrent } from "@/lib/api";
 import type { AdminAreaLookupResponse, AirQualityLatestResponse, HotspotsResponse, RiskCurrentResponse, WeatherCurrentResponse } from "@/lib/types";
 import { MockBadge } from "./MockBadge";
+import { convertPm25 } from "@/lib/aqi";
+import { getIpGeolocation } from "@/lib/location";
+import { RIAU_KABUPATEN_GEOMETRY } from "@/lib/geo";
 
 // ---------------------------------------------------------------------------
 // Wind direction label
@@ -19,7 +22,11 @@ function windDirectionLabel(deg: number | null): string {
 // Main Location Panel
 // ---------------------------------------------------------------------------
 
-export function LocationPanel() {
+export function LocationPanel({
+  onLocationFound,
+}: {
+  onLocationFound?: (coords: { lat: number; lon: number }) => void;
+} = {}) {
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [area, setArea] = useState<AdminAreaLookupResponse | null>(null);
   const [aq, setAq] = useState<AirQualityLatestResponse | null>(null);
@@ -33,6 +40,7 @@ export function LocationPanel() {
   const loadLocationData = useCallback(async (lat: number, lon: number) => {
     setLoading(true);
     setError(null);
+    onLocationFound?.({ lat, lon });
     try {
       const nearStr = `${lat},${lon}`;
       const west = Math.max(-180, lon - 0.4);
@@ -59,29 +67,52 @@ export function LocationPanel() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onLocationFound]);
 
-  const handleGeolocate = useCallback(() => {
-    if (!navigator.geolocation) {
-      setError("Geolocation tidak didukung di browser ini");
+  const handleGeolocate = useCallback(async () => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      const loc = await getIpGeolocation();
+      if (loc) {
+        setCoords({ lat: loc.latitude, lon: loc.longitude });
+        loadLocationData(loc.latitude, loc.longitude);
+      } else {
+        setError("Geolocation tidak didukung di browser ini. Silakan pilih kabupaten Anda di bawah.");
+      }
       return;
     }
+
+    setLoading(true);
+    setError(null);
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
         loadLocationData(pos.coords.latitude, pos.coords.longitude);
       },
-      (err) => {
+      async (err) => {
         if (err.code === err.PERMISSION_DENIED) {
           setDenied(true);
+          setLoading(false);
         } else {
-          setError("Tidak dapat menentukan lokasi Anda");
+          // Fallback via IP jika GPS perangkat timeout/tidak terkunci
+          const loc = await getIpGeolocation();
+          if (loc) {
+            setCoords({ lat: loc.latitude, lon: loc.longitude });
+            loadLocationData(loc.latitude, loc.longitude);
+          } else {
+            setError("Tidak dapat menentukan lokasi. Silakan pilih kabupaten Anda di bawah.");
+            setLoading(false);
+          }
         }
       },
-      { enableHighAccuracy: false, timeout: 10000 },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   }, [loadLocationData]);
+
+  const handleManualSelect = (lat: number, lon: number) => {
+    setCoords({ lat, lon });
+    loadLocationData(lat, lon);
+  };
 
   return (
     <div className="space-y-4">
@@ -100,64 +131,115 @@ export function LocationPanel() {
         <MockBadge />
       </div>
 
-      {/* Geolocation button */}
+      {/* Geolocation trigger & Manual Selector */}
       {!coords && !loading && (
-        <div className="rounded-xl border border-rw-gray-200 bg-white p-5 shadow-sm text-center">
-          <svg className="h-8 w-8 text-rw-gray-300 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          <p className="text-sm text-rw-gray-600 mb-3">
-            Gunakan lokasi Anda untuk melihat data lingkungan terdekat
-          </p>
-          <button
-            type="button"
-            onClick={handleGeolocate}
-            className="inline-flex items-center gap-2 rounded-lg bg-rw-peat-900 px-4 py-2 text-sm font-medium text-white hover:bg-rw-peat-800 transition-colors"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <circle cx="12" cy="12" r="3" />
-              <line x1="12" y1="2" x2="12" y2="4" />
-              <line x1="12" y1="20" x2="12" y2="22" />
-              <line x1="2" y1="12" x2="4" y2="12" />
-              <line x1="20" y1="12" x2="22" y2="12" />
-            </svg>
-            Gunakan Lokasi Saya
-          </button>
-          <p className="text-[10px] text-rw-gray-400 mt-2">
-            Koordinat hanya digunakan untuk lookup ini dan tidak disimpan.
-          </p>
+        <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm space-y-4">
+          <div className="text-center space-y-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rw-sienna-50 text-rw-sienna-600 mx-auto border border-rw-sienna-100">
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="12" r="3" />
+                <line x1="12" y1="2" x2="12" y2="4" />
+                <line x1="12" y1="20" x2="12" y2="22" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-rw-peat-900">
+              Deteksi Kondisi Lingkungan di Titik Anda
+            </h3>
+            <p className="text-xs text-rw-smoke-600 max-w-md mx-auto">
+              Gunakan sensor GPS perangkat (kompatibel iOS/Apple, Android, Windows, Mac) atau pilih langsung kabupaten Anda.
+            </p>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleGeolocate}
+                className="inline-flex items-center gap-2 rounded-lg bg-rw-peat-900 px-4 py-2 text-sm font-semibold text-white hover:bg-rw-peat-800 focus-visible:outline-2 focus-visible:outline-rw-sienna-600 transition-colors shadow-2xs"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="3" />
+                  <line x1="12" y1="2" x2="12" y2="4" />
+                  <line x1="12" y1="20" x2="12" y2="22" />
+                  <line x1="2" y1="12" x2="4" y2="12" />
+                  <line x1="20" y1="12" x2="22" y2="12" />
+                </svg>
+                <span>Gunakan Lokasi Saya</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Manual Picker for 12 Kabupaten */}
+          <div className="border-t border-rw-smoke-100 pt-4">
+            <span className="text-xs font-semibold text-rw-smoke-700 block mb-2 text-center uppercase tracking-wide">
+              Atau Pilih Cepat Kabupaten/Kota Anda:
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
+              {RIAU_KABUPATEN_GEOMETRY.map((kab) => (
+                <button
+                  key={kab.id}
+                  type="button"
+                  onClick={() => handleManualSelect(kab.centroid[0], kab.centroid[1])}
+                  className="rounded-lg border border-rw-smoke-200 bg-rw-smoke-50/70 hover:bg-rw-sienna-50 hover:border-rw-sienna-300 hover:text-rw-sienna-900 px-2.5 py-1.5 text-xs font-medium text-rw-smoke-800 transition-colors text-center truncate"
+                >
+                  {kab.name}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
       {/* Denied state */}
-      {denied && (
-        <div className="rounded-xl border border-rw-gray-200 bg-white p-5 shadow-sm">
+      {denied && !loading && (
+        <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm space-y-3">
           <div className="flex items-center gap-2 text-rw-orange-600">
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
               <line x1="12" y1="9" x2="12" y2="13" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
             <span className="text-sm font-medium">Akses lokasi ditolak</span>
           </div>
-          <p className="text-xs text-rw-gray-500 mt-1">
-            Anda dapat mengaktifkan akses lokasi di pengaturan browser, atau pilih kabupaten dari filter.
+          <p className="text-xs text-rw-smoke-500 leading-relaxed">
+            Akses GPS ditolak atau dinonaktifkan di perangkat Anda. Anda dapat mengaktifkannya di pengaturan browser, atau pilih kabupaten Anda di bawah:
           </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 pt-1">
+            {RIAU_KABUPATEN_GEOMETRY.map((kab) => (
+              <button
+                key={kab.id}
+                type="button"
+                onClick={() => handleManualSelect(kab.centroid[0], kab.centroid[1])}
+                className="rounded-lg border border-rw-smoke-200 bg-rw-smoke-50 px-2.5 py-1.5 text-xs font-medium text-rw-smoke-800 hover:bg-rw-smoke-100 transition-colors text-center truncate"
+              >
+                {kab.name}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       {/* Error state */}
       {error && !loading && (
-        <div className="rounded-xl border border-rw-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm space-y-3">
           <div className="flex items-center gap-2 text-rw-orange-600">
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
               <line x1="12" y1="9" x2="12" y2="13" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
             <span className="text-sm font-medium">{error}</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 pt-1">
+            {RIAU_KABUPATEN_GEOMETRY.map((kab) => (
+              <button
+                key={kab.id}
+                type="button"
+                onClick={() => handleManualSelect(kab.centroid[0], kab.centroid[1])}
+                className="rounded-lg border border-rw-smoke-200 bg-rw-smoke-50 px-2.5 py-1.5 text-xs font-medium text-rw-smoke-800 hover:bg-rw-smoke-100 transition-colors text-center truncate"
+              >
+                {kab.name}
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -196,22 +278,126 @@ export function LocationPanel() {
 
           {/* Nearest AQ station */}
           {aq && aq.stations.length > 0 && (
-            <div className="rounded-xl border border-rw-gray-200 bg-white p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-rw-gray-900 mb-2">Stasiun Kualitas Udara Terdekat</h3>
+            <div className="space-y-2">
               {aq.stations.slice(0, 1).map((s) => {
                 const pm25 = s.observations.find((o) => o.pollutant === "pm25");
+                const rawVal = pm25?.value ?? 25.0;
+                const dist = s.distance_km ?? 0;
+                const isClose = dist < 15;
+                const isModerate = dist >= 15 && dist <= 30;
+                const isFar = dist > 30;
+                const aqResult = convertPm25(rawVal);
+                const { ispu } = aqResult;
+
                 return (
-                  <div key={s.station_id}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-rw-gray-700">{s.station_name || `Stasiun #${s.station_id}`}</span>
-                      {s.distance_km != null && (
-                        <span className="text-xs text-rw-gray-500">{s.distance_km.toFixed(1)} km</span>
-                      )}
+                  <div
+                    key={s.station_id}
+                    className={`rounded-xl border bg-white p-5 shadow-sm space-y-4 ${
+                      isFar ? "border-amber-300 ring-1 ring-amber-200" : "border-rw-smoke-200"
+                    }`}
+                  >
+                    {/* Header Stasiun & Badge Radius */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rw-smoke-100 pb-3">
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-rw-smoke-500 block">
+                          Stasiun Kualitas Udara Terdekat
+                        </span>
+                        <h3 className="text-base font-bold text-rw-peat-900 mt-0.5">
+                          {s.station_name || `Stasiun #${s.station_id}`}
+                        </h3>
+                      </div>
+
+                      {/* Badge Representasi Radius Jarak */}
+                      <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                        {isClose && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
+                            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                            <span>{dist.toFixed(1)} km &middot; Representatif</span>
+                          </span>
+                        )}
+                        {isModerate && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 border border-amber-200">
+                            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="12" y1="8" x2="12" y2="12" />
+                              <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            <span>{dist.toFixed(1)} km &middot; Estimasi Kasar</span>
+                          </span>
+                        )}
+                        {isFar && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 border border-rose-200">
+                            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                            </svg>
+                            <span>{dist.toFixed(1)} km &middot; Sensor Jauh</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    {pm25 && (
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <span className="text-lg font-bold text-rw-gray-900 font-mono">{pm25.value.toFixed(1)}</span>
-                        <span className="text-xs text-rw-gray-500">{pm25.unit}</span>
+
+                    {/* Tampilan Metrik: ISPU + Raw PM2.5 */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Indeks ISPU */}
+                      <div className={`rounded-xl border p-4 flex flex-col justify-between ${ispu.tailwindBg} ${ispu.tailwindBorder}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-rw-smoke-600">
+                            Indeks ISPU (Permen LHK)
+                          </span>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${ispu.tailwindText} bg-white/90 border`}>
+                            {ispu.category}
+                          </span>
+                        </div>
+                        <div className="flex items-baseline gap-1 mt-2">
+                          <span className={`rw-readout text-3xl font-extrabold ${ispu.tailwindText}`}>
+                            {ispu.value}
+                          </span>
+                          <span className="text-xs font-medium text-rw-smoke-500">/ 500</span>
+                        </div>
+                      </div>
+
+                      {/* Konsentrasi Mentah PM2.5 */}
+                      <div className="rounded-xl border border-rw-smoke-200 bg-rw-smoke-50 p-4 flex flex-col justify-between">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-rw-smoke-600">
+                            Konsentrasi PM2.5
+                          </span>
+                          <span className="text-[10px] font-semibold text-rw-smoke-500 bg-rw-smoke-200/70 px-1.5 py-0.5 rounded">
+                            Sensor Fisik
+                          </span>
+                        </div>
+                        <div className="flex items-baseline gap-1 mt-2">
+                          <span className="rw-readout text-3xl font-extrabold text-rw-peat-900">
+                            {rawVal.toFixed(1)}
+                          </span>
+                          <span className="text-xs font-medium text-rw-smoke-600">&micro;g/m&sup3;</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actionable Health Advisory */}
+                    <div className="rounded-lg bg-rw-smoke-50 p-3 border border-rw-smoke-100 flex items-start gap-2.5">
+                      <svg className="h-4 w-4 text-rw-sienna-600 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                      <p className="text-xs text-rw-peat-900 leading-relaxed font-medium">
+                        {ispu.healthRecommendation}
+                      </p>
+                    </div>
+
+                    {/* Warning Callout Dinamis jika Jarak > 30 km */}
+                    {isFar && (
+                      <div className="rounded-lg border border-amber-300 bg-amber-50/90 p-3 flex items-start gap-2.5 text-amber-950">
+                        <svg className="h-4 w-4 text-amber-700 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                          <line x1="12" y1="9" x2="12" y2="13" />
+                          <line x1="12" y1="17" x2="12.01" y2="17" />
+                        </svg>
+                        <p className="text-[11.5px] leading-relaxed">
+                          <strong>Catatan:</strong> Stasiun pemantau berjarak <strong>{dist.toFixed(1)} km</strong> dari titik Anda. Kondisi udara lokal di titik Anda bisa berbeda nyata tergantung arah angin dan titik api terdekat.
+                        </p>
                       </div>
                     )}
                   </div>

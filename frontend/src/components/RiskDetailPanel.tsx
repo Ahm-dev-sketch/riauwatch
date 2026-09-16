@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getRiskCurrent } from "@/lib/api";
-import type { RiskCurrentResponse, RiskAssessment } from "@/lib/types";
+import { getRiskCurrent, getAirQualityLatest } from "@/lib/api";
+import type { RiskCurrentResponse, RiskAssessment, AQStationLatest } from "@/lib/types";
 import { MockBadge } from "./MockBadge";
+import { convertPm25, getPm25ForArea } from "@/lib/aqi";
 
 // ---------------------------------------------------------------------------
 // Risk level → visual (text + icon + color — never color alone)
@@ -149,7 +150,9 @@ function humanizeValue(rawKey: string, rawVal: string | number): string {
     return `${formatNum(rawVal, 0)} titik terdeteksi`;
   }
   if (rawKey === "hotspot_density_48h") {
-    return `${formatNum(rawVal, 2)} titik / 1.000 km²`;
+    const n = Number(rawVal);
+    if (n === 0 || isNaN(n)) return "0 titik / km²";
+    return `${formatNum(rawVal, 3)} titik / km²`;
   }
   if (rawKey === "dry_spell_days") {
     return `${formatNum(rawVal, 0)} hari berturut-turut`;
@@ -265,35 +268,59 @@ function RiskFactors({ factors }: { factors: Record<string, unknown> }) {
 // Risk Card — full detail for one area with Dual-Index Architecture
 // ---------------------------------------------------------------------------
 
-function RiskCard({ assessment }: { assessment: RiskAssessment }) {
+function RiskCard({
+  assessment,
+  stations,
+  isUserLocation = false,
+}: {
+  assessment: RiskAssessment;
+  stations?: AQStationLatest[] | null;
+  isUserLocation?: boolean;
+}) {
   const visual = getRiskVisual(assessment.risk_level);
   const displayScore = normalizeScore(assessment.fire_hazard_index ?? assessment.score);
   const fireLevel = assessment.fire_risk_level || (displayScore && displayScore >= 75 ? "Ekstrem" : displayScore && displayScore >= 50 ? "Tinggi" : displayScore && displayScore >= 25 ? "Sedang" : "Rendah");
   
-  const aqLevel = assessment.air_quality_level || "Sedang";
-  const pm25Val = assessment.pm25_value ?? null;
-  const aqIndex = assessment.air_quality_hazard_index != null ? Math.round(assessment.air_quality_hazard_index) : (pm25Val ? Math.round(pm25Val) : null);
+  const resolvedPm25 = assessment.pm25_value ?? getPm25ForArea(assessment.area_name, stations);
+  const aqResult = convertPm25(resolvedPm25);
+  const aqLevel = assessment.air_quality_level || aqResult.ispu.category;
+  const ispuScore = aqResult.ispu.value;
 
   return (
     <div
-      className={`rw-instrument-panel rounded-xl border ${visual.borderColor} bg-white p-5 shadow-sm space-y-4`}
+      className={`rw-instrument-panel rounded-xl border bg-white p-5 shadow-sm space-y-4 ${
+        isUserLocation ? "border-rw-sienna-600 ring-2 ring-rw-sienna-600/20" : visual.borderColor
+      }`}
       style={{
         borderLeftColor:
-          visual.color.includes("red")
-            ? "var(--rw-red-600)"
-            : visual.color.includes("purple")
-              ? "#7e22ce"
-              : visual.color.includes("orange")
-                ? "var(--rw-orange-600)"
-                : visual.color.includes("green")
-                  ? "var(--rw-mangrove-600)"
-                  : "var(--rw-smoke-400)",
+          isUserLocation
+            ? "var(--rw-sienna-600)"
+            : visual.color.includes("red")
+              ? "var(--rw-red-600)"
+              : visual.color.includes("purple")
+                ? "#7e22ce"
+                : visual.color.includes("orange")
+                  ? "var(--rw-orange-600)"
+                  : visual.color.includes("green")
+                    ? "var(--rw-mangrove-600)"
+                    : "var(--rw-smoke-400)",
       }}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 border-b border-rw-smoke-100 pb-3">
         <div>
-          <h3 className="text-base font-bold text-rw-peat-900">{assessment.area_name}</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-base font-bold text-rw-peat-900">{assessment.area_name}</h3>
+            {isUserLocation && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-rw-sienna-600 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-2xs">
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <span>Lokasi Anda</span>
+              </span>
+            )}
+          </div>
           <p className="text-xs text-rw-smoke-500 mt-0.5">
             {humanizeHorizon(assessment.horizon)} &middot;{" "}
             {new Date(assessment.assessed_for).toLocaleString("id-ID", {
@@ -362,19 +389,17 @@ function RiskCard({ assessment }: { assessment: RiskAssessment }) {
           </div>
           <div>
             <div className="flex items-center justify-between text-[11px] text-rw-smoke-600 mb-1">
-              <span>Konsentrasi PM2.5 / ISPU</span>
-              <span className="rw-readout font-bold text-rw-peat-900">{pm25Val ? `${Math.round(pm25Val)} µg/m³` : (aqIndex ? `${aqIndex}%` : "-")}</span>
+              <span>Indeks ISPU &middot; PM2.5</span>
+              <span className="rw-readout font-bold text-rw-peat-900">ISPU {ispuScore} ({resolvedPm25.toFixed(1)} µg/m³)</span>
             </div>
-            {aqIndex != null && (
-              <div className="h-2 overflow-hidden rounded-full bg-rw-smoke-200">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    aqLevel === "Tidak Sehat" || aqLevel === "Sangat Tidak Sehat" ? "bg-rw-red-600" : "bg-amber-500"
-                  }`}
-                  style={{ width: `${Math.min(100, aqIndex)}%` }}
-                />
-              </div>
-            )}
+            <div className="h-2 overflow-hidden rounded-full bg-rw-smoke-200">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  aqLevel === "Tidak Sehat" || aqLevel === "Sangat Tidak Sehat" ? "bg-rw-red-600" : aqLevel === "Sedang" ? "bg-amber-500" : "bg-emerald-600"
+                }`}
+                style={{ width: `${Math.min(100, Math.max(8, (ispuScore / 300) * 100))}%` }}
+              />
+            </div>
           </div>
           <p className="text-[11px] text-rw-smoke-500 leading-snug">
             Merefleksikan paparan kabut asap (termasuk asap kiriman lintas wilayah) dan dampak kesehatan.
@@ -399,8 +424,17 @@ function RiskCard({ assessment }: { assessment: RiskAssessment }) {
 // Main Risk Detail Panel
 // ---------------------------------------------------------------------------
 
-export function RiskDetailPanel({ kabupatenId }: { kabupatenId?: number }) {
+export function RiskDetailPanel({
+  kabupatenId,
+  userKabupatenId,
+  userKabupatenName,
+}: {
+  kabupatenId?: number;
+  userKabupatenId?: number;
+  userKabupatenName?: string;
+}) {
   const [data, setData] = useState<RiskCurrentResponse | null>(null);
+  const [aqStations, setAqStations] = useState<AQStationLatest[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -412,8 +446,14 @@ export function RiskDetailPanel({ kabupatenId }: { kabupatenId?: number }) {
       setError(null);
       try {
         const params = kabupatenId ? { kabupaten_id: kabupatenId } : undefined;
-        const res = await getRiskCurrent(params);
-        if (!cancelled) setData(res);
+        const [res, aqRes] = await Promise.all([
+          getRiskCurrent(params),
+          getAirQualityLatest().catch(() => null),
+        ]);
+        if (!cancelled) {
+          setData(res);
+          if (aqRes) setAqStations(aqRes.stations);
+        }
       } catch {
         if (!cancelled) setError("Gagal memuat data risiko");
       } finally {
@@ -497,6 +537,18 @@ export function RiskDetailPanel({ kabupatenId }: { kabupatenId?: number }) {
     );
   }
 
+  // Susun agar kabupaten/lokasi pengguna selalu tampil di kartu pertama
+  const targetId = kabupatenId ?? userKabupatenId;
+  const targetName = userKabupatenName;
+
+  const sortedAssessments = [...(data?.assessments ?? [])].sort((a, b) => {
+    const isTargetA = (targetId && a.area_id === targetId) || (targetName && a.area_name.includes(targetName));
+    const isTargetB = (targetId && b.area_id === targetId) || (targetName && b.area_name.includes(targetName));
+    if (isTargetA && !isTargetB) return -1;
+    if (!isTargetA && isTargetB) return 1;
+    return 0;
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -515,9 +567,19 @@ export function RiskDetailPanel({ kabupatenId }: { kabupatenId?: number }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {data!.assessments.map((a) => (
-          <RiskCard key={a.area_id} assessment={a} />
-        ))}
+        {sortedAssessments.map((a, idx) => {
+          const isUserLoc = idx === 0 && Boolean(
+            (targetId && a.area_id === targetId) || (targetName && a.area_name.includes(targetName))
+          );
+          return (
+            <RiskCard
+              key={a.area_id}
+              assessment={a}
+              stations={aqStations}
+              isUserLocation={isUserLoc}
+            />
+          );
+        })}
       </div>
     </div>
   );

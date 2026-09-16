@@ -23,6 +23,7 @@ import {
   getAdministrativeAreas,
 } from "@/lib/api";
 import { fuseAndDeduplicateHotspots } from "@/lib/firms";
+import { resolveRiauLocation } from "@/lib/geo";
 import type {
   StatusResponse,
   HotspotsResponse,
@@ -67,6 +68,15 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [tileError, setTileError] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    coords: { lat: number; lon: number } | null;
+    kabupatenId: number | null;
+    kabupatenName: string | null;
+  }>({
+    coords: null,
+    kabupatenId: null,
+    kabupatenName: null,
+  });
 
   const mapRef = useRef<HotspotMapHandle>(null);
 
@@ -319,9 +329,20 @@ export default function HomePage() {
                   Ringkasan Risiko per Kabupaten
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {risk.assessments.slice(0, 6).map((a) => (
-                    <RiskBadge key={a.area_id} assessment={a} compact />
-                  ))}
+                  {[...risk.assessments]
+                    .sort((a, b) => {
+                      const targetId = filters.kabupatenId ? Number(filters.kabupatenId) : userLocation.kabupatenId;
+                      const targetName = userLocation.kabupatenName;
+                      const isTargetA = (targetId && a.area_id === targetId) || (targetName && a.area_name.includes(targetName));
+                      const isTargetB = (targetId && b.area_id === targetId) || (targetName && b.area_name.includes(targetName));
+                      if (isTargetA && !isTargetB) return -1;
+                      if (!isTargetA && isTargetB) return 1;
+                      return 0;
+                    })
+                    .slice(0, 6)
+                    .map((a) => (
+                      <RiskBadge key={a.area_id} assessment={a} compact />
+                    ))}
                 </div>
                 {risk.note && (
                   <p className="mt-2 text-xs text-rw-gray-600 italic">
@@ -403,7 +424,11 @@ export default function HomePage() {
             tabIndex={0}
           >
             <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
-              <WeatherPanel />
+              <WeatherPanel
+                kabupatenId={filters.kabupatenId ? Number(filters.kabupatenId) : undefined}
+                near={userLocation.coords ? `${userLocation.coords.lat},${userLocation.coords.lon}` : undefined}
+                userKabupatenName={userLocation.kabupatenName ?? undefined}
+              />
             </section>
           </div>
         )}
@@ -416,7 +441,11 @@ export default function HomePage() {
             tabIndex={0}
           >
             <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
-              <RiskDetailPanel />
+              <RiskDetailPanel
+                kabupatenId={filters.kabupatenId ? Number(filters.kabupatenId) : undefined}
+                userKabupatenId={userLocation.kabupatenId ?? undefined}
+                userKabupatenName={userLocation.kabupatenName ?? undefined}
+              />
             </section>
           </div>
         )}
@@ -429,7 +458,16 @@ export default function HomePage() {
             tabIndex={0}
           >
             <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
-              <LocationPanel />
+              <LocationPanel
+                onLocationFound={(loc) => {
+                  const resolved = resolveRiauLocation(loc.lat, loc.lon);
+                  setUserLocation({
+                    coords: { lat: loc.lat, lon: loc.lon },
+                    kabupatenId: resolved.kabupatenId,
+                    kabupatenName: resolved.kabupatenName,
+                  });
+                }}
+              />
             </section>
           </div>
         )}

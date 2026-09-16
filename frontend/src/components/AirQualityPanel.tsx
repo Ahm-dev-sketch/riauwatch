@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { getAirQualityLatest, getAirQualityHistory } from "@/lib/api";
 import type { AirQualityLatestResponse, AirQualityHistoryResponse, AQStationLatest, AQHistoryPoint } from "@/lib/types";
 import { MockBadge } from "./MockBadge";
@@ -605,6 +605,21 @@ export function AirQualityPanel() {
   const [selectedPollutant, setSelectedPollutant] = useState("pm25");
   const [stale, setStale] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [stationSearch, setStationSearch] = useState("");
+
+  const riauStations = useMemo(() => {
+    const list = data?.stations ?? [];
+    return list.filter((s) => {
+      const name = (s.station_name || "").toLowerCase();
+      return !name.includes("jakarta") && !name.includes("malacca") && !name.includes("malaysia");
+    });
+  }, [data?.stations]);
+
+  const filteredStations = useMemo(() => {
+    if (!stationSearch.trim()) return riauStations;
+    const q = stationSearch.toLowerCase();
+    return riauStations.filter((s) => (s.station_name || "").toLowerCase().includes(q));
+  }, [riauStations, stationSearch]);
 
   // Load latest air quality data
   useEffect(() => {
@@ -696,7 +711,7 @@ export function AirQualityPanel() {
     );
   }
 
-  if (!data || data.stations.length === 0) {
+  if (!data || riauStations.length === 0) {
     return (
       <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-2 text-rw-smoke-500">
@@ -710,8 +725,8 @@ export function AirQualityPanel() {
     );
   }
 
-  const activeStationObj = data.stations.find((s) => s.station_id === selectedStation) ?? data.stations[0];
-  const activeObs = activeStationObj.observations.find((o) => o.pollutant === selectedPollutant) ?? activeStationObj.observations[0];
+  const activeStationObj = riauStations.find((s) => s.station_id === selectedStation) ?? riauStations[0];
+  const activeObs = activeStationObj?.observations.find((o) => o.pollutant === selectedPollutant) ?? activeStationObj?.observations[0];
   const breakpoints = selectedPollutant === "pm25" ? ISPU_PM25 : ISPU_PM10;
   const currentCategory = activeObs ? getISPUCategory(activeObs.value, breakpoints) : ISPU_PM25[0];
 
@@ -793,11 +808,11 @@ export function AirQualityPanel() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-rw-smoke-700 uppercase tracking-wide">
-                Pilih Stasiun Pemantau ({data.stations.length} Stasiun Tersedia):
+                Pilih Stasiun Pemantau ({riauStations.length} Stasiun Tersedia):
               </span>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {data.stations.map((st) => {
+            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto rw-scrollbar p-1">
+              {riauStations.map((st) => {
                 const isCurrent = st.station_id === selectedStation;
                 return (
                   <button
@@ -823,17 +838,43 @@ export function AirQualityPanel() {
         </div>
       )}
 
-      {/* Station list header */}
-      <div className="pt-2">
-        <h3 className="text-sm font-bold text-rw-peat-900 mb-2">
-          Daftar Stasiun Pemantau &amp; Pembacaan Terkini
-        </h3>
-        <p className="text-xs text-rw-smoke-500 mb-3">
-          Klik pada salah satu stasiun di bawah untuk melihat grafik tren dan riwayat 24 jamnya.
-        </p>
+      {/* Station list header with search */}
+      <div className="pt-2 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-rw-peat-900">
+              Daftar Stasiun Pemantau SPKUA Riau
+            </h3>
+            <p className="text-xs text-rw-smoke-500">
+              Klik stasiun untuk melihat grafik tren dan riwayat 24 jam.
+            </p>
+          </div>
+
+          {/* Search input for stations */}
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              placeholder="Cari stasiun (Pekanbaru, Dumai, dll)..."
+              value={stationSearch}
+              onChange={(e) => setStationSearch(e.target.value)}
+              className="w-full rounded-lg border border-rw-smoke-200 pl-8 pr-3 py-1.5 text-xs text-rw-smoke-900 bg-white placeholder:text-rw-smoke-400 focus:border-rw-sienna-600 focus-visible:ring-2 focus-visible:ring-rw-sienna-600 outline-none shadow-2xs"
+            />
+            <svg
+              className="absolute left-2.5 top-2 h-3.5 w-3.5 text-rw-smoke-400"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {data.stations.map((station) => (
+          {filteredStations.map((station) => (
             <StationCard
               key={station.station_id}
               station={station}

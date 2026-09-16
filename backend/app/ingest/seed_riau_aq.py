@@ -11,12 +11,18 @@ RIAU_STATIONS = [
     {"name": "Stasiun Pekanbaru - Tampan", "ext_id": "spkua-pku-01", "lon": 101.38, "lat": 0.48, "pm25": 38.5, "pm10": 52.1},
     {"name": "Stasiun Pekanbaru - Sukajadi", "ext_id": "spkua-pku-02", "lon": 101.44, "lat": 0.52, "pm25": 41.2, "pm10": 56.4},
     {"name": "Stasiun Dumai - Pelintung", "ext_id": "spkua-dum-01", "lon": 101.45, "lat": 1.62, "pm25": 55.2, "pm10": 71.0},
+    {"name": "Stasiun Dumai - Dumai Barat", "ext_id": "spkua-dum-02", "lon": 101.38, "lat": 1.68, "pm25": 30.5, "pm10": 44.0},
     {"name": "Stasiun Duri / Mandau - Bengkalis", "ext_id": "spkua-bks-01", "lon": 101.22, "lat": 1.28, "pm25": 62.8, "pm10": 84.5},
+    {"name": "Stasiun Bengkalis - Bengkalis Kota", "ext_id": "spkua-bks-02", "lon": 102.14, "lat": 1.48, "pm25": 42.0, "pm10": 58.0},
     {"name": "Stasiun Siak Sri Indrapura", "ext_id": "spkua-siak-01", "lon": 102.04, "lat": 0.79, "pm25": 28.4, "pm10": 41.2},
     {"name": "Stasiun Kampar - Bangkinang", "ext_id": "spkua-kmp-01", "lon": 101.02, "lat": 0.33, "pm25": 24.1, "pm10": 36.8},
     {"name": "Stasiun Pelalawan - Pangkalan Kerinci", "ext_id": "spkua-plw-01", "lon": 101.86, "lat": 0.42, "pm25": 68.9, "pm10": 92.4},
     {"name": "Stasiun Rokan Hilir - Bagan Siapi-api", "ext_id": "spkua-rohil-01", "lon": 100.82, "lat": 2.16, "pm25": 48.0, "pm10": 63.5},
     {"name": "Stasiun Indragiri Hulu - Rengat", "ext_id": "spkua-inhu-01", "lon": 102.54, "lat": -0.37, "pm25": 33.6, "pm10": 45.2},
+    {"name": "Stasiun Indragiri Hilir - Tembilahan", "ext_id": "spkua-inhil-01", "lon": 103.15, "lat": -0.32, "pm25": 65.0, "pm10": 88.0},
+    {"name": "Stasiun Rokan Hulu - Pasir Pengaraian", "ext_id": "spkua-rohul-01", "lon": 100.28, "lat": 0.85, "pm25": 18.0, "pm10": 26.5},
+    {"name": "Stasiun Kuantan Singingi - Teluk Kuantan", "ext_id": "spkua-kuansing-01", "lon": 101.45, "lat": -0.55, "pm25": 36.0, "pm10": 49.0},
+    {"name": "Stasiun Kepulauan Meranti - Selatpanjang", "ext_id": "spkua-meranti-01", "lon": 102.72, "lat": 0.98, "pm25": 20.0, "pm10": 30.0},
 ]
 
 

@@ -117,7 +117,15 @@ function ForecastRow({ obs }: { obs: WeatherObservation }) {
 // Main Weather Panel
 // ---------------------------------------------------------------------------
 
-export function WeatherPanel({ kabupatenId }: { kabupatenId?: number }) {
+export function WeatherPanel({
+  kabupatenId,
+  near,
+  userKabupatenName,
+}: {
+  kabupatenId?: number;
+  near?: string;
+  userKabupatenName?: string;
+}) {
   const [current, setCurrent] = useState<WeatherCurrentResponse | null>(null);
   const [forecast, setForecast] = useState<WeatherForecastResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -130,10 +138,23 @@ export function WeatherPanel({ kabupatenId }: { kabupatenId?: number }) {
       setLoading(true);
       setError(null);
       try {
-        const params = kabupatenId ? { kabupaten_id: kabupatenId } : undefined;
+        let currentParams: { kabupaten_id?: number; near?: string } | undefined;
+        let forecastParams: { kabupaten_id?: number; near?: string; hours: number };
+
+        if (kabupatenId) {
+          currentParams = { kabupaten_id: kabupatenId };
+          forecastParams = { kabupaten_id: kabupatenId, hours: 24 };
+        } else if (near) {
+          currentParams = { near };
+          forecastParams = { near, hours: 24 };
+        } else {
+          currentParams = undefined;
+          forecastParams = { near: "0.5,101.5", hours: 24 };
+        }
+
         const [currRes, forecastRes] = await Promise.all([
-          getWeatherCurrent(params),
-          getWeatherForecast(params?.kabupaten_id ? { kabupaten_id: params.kabupaten_id, hours: 24 } : { near: "0.5,101.5", hours: 24 }),
+          getWeatherCurrent(currentParams),
+          getWeatherForecast(forecastParams),
         ]);
         if (!cancelled) {
           setCurrent(currRes);
@@ -149,7 +170,7 @@ export function WeatherPanel({ kabupatenId }: { kabupatenId?: number }) {
     return () => {
       cancelled = true;
     };
-  }, [kabupatenId, retryCount]);
+  }, [kabupatenId, near, retryCount]);
 
   if (loading) {
     return (
@@ -214,14 +235,25 @@ export function WeatherPanel({ kabupatenId }: { kabupatenId?: number }) {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h2 className="text-lg font-bold text-rw-peat-900 flex items-center gap-2 font-display">
-            <svg className="h-5 w-5 text-rw-sienna-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M17.5 19H9a7 7 0 116.71-9h1.79a4.5 4.5 0 110 9z" />
-            </svg>
-            Kondisi Cuaca &amp; Atmosferik
-          </h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg font-bold text-rw-peat-900 flex items-center gap-2 font-display">
+              <svg className="h-5 w-5 text-rw-sienna-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M17.5 19H9a7 7 0 116.71-9h1.79a4.5 4.5 0 110 9z" />
+              </svg>
+              Kondisi Cuaca &amp; Atmosferik
+            </h2>
+            {userKabupatenName && !kabupatenId && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-rw-sienna-600 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-2xs">
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <span>Lokasi Anda</span>
+              </span>
+            )}
+          </div>
           <div className="text-xs text-rw-smoke-500 mt-0.5">
             Wilayah: <strong className="text-rw-peat-900">{current.area_name}</strong>
             {obs.age_seconds !== null && (
