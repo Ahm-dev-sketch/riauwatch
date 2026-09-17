@@ -103,6 +103,7 @@ export function HotspotList({
   const listRef = useRef<HTMLUListElement>(null);
   const [expanded, setExpanded] = useState(true);
   const [selectedFeature, setSelectedFeature] = useState<HotspotFeature | null>(null);
+  const [visibleLimit, setVisibleLimit] = useState(30);
 
   // Urutkan dari tingkat akurasi / intensitas paling tinggi ke paling rendah
   const features = useMemo(() => {
@@ -119,6 +120,7 @@ export function HotspotList({
   }, [hotspots?.features]);
 
   const displayCount = totalCount ?? features.length;
+  const renderedFeatures = features.slice(0, visibleLimit);
 
   const handleItemClick = useCallback(
     (feature: HotspotFeature, index: number) => {
@@ -140,16 +142,20 @@ export function HotspotList({
         const items = listRef.current?.querySelectorAll("[role='option']");
         if (!items?.length) return;
         const currentIndex = Array.from(items).indexOf(e.target as Element);
-        let nextIndex: number;
+
         if (e.key === "ArrowDown") {
-          nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+          if (currentIndex === items.length - 1 && visibleLimit < features.length) {
+            setVisibleLimit((prev) => Math.min(features.length, prev + 30));
+          }
+          const nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+          (items[nextIndex] as HTMLElement)?.focus();
         } else {
-          nextIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+          const nextIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+          (items[nextIndex] as HTMLElement)?.focus();
         }
-        (items[nextIndex] as HTMLElement).focus();
       }
     },
-    [handleItemClick],
+    [handleItemClick, visibleLimit, features.length],
   );
 
   return (
@@ -234,78 +240,92 @@ export function HotspotList({
               Tidak ada titik panas dalam rentang filter saat ini.
             </li>
           ) : (
-            features.map((feature, index) => {
-              const coords = feature.geometry.coordinates;
-                  const props = feature.properties as unknown as Record<string, unknown>;
-              const isHighlighted = selectedFeature === feature || highlightedIndex === index;
+            <>
+              {renderedFeatures.map((feature, index) => {
+                const coords = feature.geometry.coordinates;
+                const props = feature.properties as unknown as Record<string, unknown>;
+                const isHighlighted = selectedFeature === feature || highlightedIndex === index;
 
-              return (
-                <li
-                  key={index}
-                  role="option"
-                  aria-selected={isHighlighted}
-                  tabIndex={0}
-                  data-testid={`hotspot-item-${index}`}
-                  data-hotspot-index={index}
-                  className={`group flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors ${
-                    isHighlighted
-                      ? "bg-rw-mangrove-50 ring-1 ring-inset ring-rw-mangrove-600"
-                      : "hover:bg-rw-smoke-50"
-                  }`}
-                  onClick={() => handleItemClick(feature, index)}
-                  onKeyDown={(e) => handleKeyDown(e, feature, index)}
-                >
-                  {/* Confidence indicator */}
-                  <div className={`mt-0.5 flex-shrink-0 rounded-full p-1 ${confidenceColor(props.confidence as string | null)}`}>
-                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <circle cx="12" cy="12" r="6" />
-                    </svg>
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-rw-smoke-900 truncate">
-                        {resolveRiauLocation(coords[1], coords[0], props.area_name as string).fullDescription}
-                      </span>
-                      <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${confidenceColor(props.confidence as string | null)}`}>
-                        {confidenceLabel(props.confidence as string | null)}
-                        {props.confidence_value != null && (
-                          <span className="ml-0.5 opacity-75">({String(props.confidence_value)}%)</span>
-                        )}
-                      </span>
+                return (
+                  <li
+                    key={index}
+                    role="option"
+                    aria-selected={isHighlighted}
+                    tabIndex={0}
+                    data-testid={`hotspot-item-${index}`}
+                    data-hotspot-index={index}
+                    className={`group flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors ${
+                      isHighlighted
+                        ? "bg-rw-mangrove-50 ring-1 ring-inset ring-rw-mangrove-600"
+                        : "hover:bg-rw-smoke-50"
+                    }`}
+                    onClick={() => handleItemClick(feature, index)}
+                    onKeyDown={(e) => handleKeyDown(e, feature, index)}
+                  >
+                    {/* Confidence indicator */}
+                    <div className={`mt-0.5 flex-shrink-0 rounded-full p-1 ${confidenceColor(props.confidence as string | null)}`}>
+                      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <circle cx="12" cy="12" r="6" />
+                      </svg>
                     </div>
-                    <div className="mt-1 flex items-center gap-3 text-xs text-rw-smoke-500">
-                      <span className="rw-readout">{coords[1].toFixed(4)}, {coords[0].toFixed(4)}</span>
-                      <span aria-hidden="true">·</span>
-                      <time dateTime={props.acquired_at as string}>
-                        {formatAcquiredAt(props.acquired_at as string | null)}
-                      </time>
-                      <span aria-hidden="true">·</span>
-                      <span>{friendlySat(props.satellite as string | null)}</span>
-                    </div>
-                  </div>
 
-                  {/* "Tampilkan di peta" action */}
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-rw-smoke-900 truncate">
+                          {resolveRiauLocation(coords[1], coords[0], props.area_name as string).fullDescription}
+                        </span>
+                        <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${confidenceColor(props.confidence as string | null)}`}>
+                          {confidenceLabel(props.confidence as string | null)}
+                          {props.confidence_value != null && (
+                            <span className="ml-0.5 opacity-75">({String(props.confidence_value)}%)</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-3 text-xs text-rw-smoke-500">
+                        <span className="rw-readout">{coords[1].toFixed(4)}, {coords[0].toFixed(4)}</span>
+                        <span aria-hidden="true">·</span>
+                        <time dateTime={props.acquired_at as string}>
+                          {formatAcquiredAt(props.acquired_at as string | null)}
+                        </time>
+                        <span aria-hidden="true">·</span>
+                        <span>{friendlySat(props.satellite as string | null)}</span>
+                      </div>
+                    </div>
+
+                    {/* "Tampilkan di peta" action */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleItemClick(feature, index);
+                      }}
+                      className="flex-shrink-0 mt-0.5 rounded-md border border-rw-smoke-200 bg-white px-2 py-1 text-[11px] font-medium text-rw-sienna-600 hover:bg-rw-sienna-50 hover:border-rw-sienna-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rw-sienna-600 transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                      aria-label={`Tampilkan di peta: ${(props.area_name as string) || "lokasi ini"}`}
+                      data-testid={`show-on-map-${index}`}
+                      tabIndex={-1}
+                    >
+                      <svg className="inline-block h-3 w-3 mr-0.5 -mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+                      </svg>
+                      Tampilkan di peta
+                    </button>
+                  </li>
+                );
+              })}
+
+              {features.length > visibleLimit && (
+                <li className="p-2 bg-rw-smoke-50/70 text-center">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleItemClick(feature, index);
-                    }}
-                    className="flex-shrink-0 mt-0.5 rounded-md border border-rw-smoke-200 bg-white px-2 py-1 text-[11px] font-medium text-rw-sienna-600 hover:bg-rw-sienna-50 hover:border-rw-sienna-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rw-sienna-600 transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-                    aria-label={`Tampilkan di peta: ${(props.area_name as string) || "lokasi ini"}`}
-                    data-testid={`show-on-map-${index}`}
-                    tabIndex={-1}
+                    onClick={() => setVisibleLimit((prev) => Math.min(features.length, prev + 50))}
+                    className="text-xs font-semibold text-rw-sienna-700 hover:text-rw-sienna-800 py-1.5 px-3 rounded-lg border border-rw-smoke-200 bg-white shadow-2xs hover:bg-rw-smoke-50 transition-colors"
                   >
-                    <svg className="inline-block h-3 w-3 mr-0.5 -mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-                    </svg>
-                    Tampilkan di peta
+                    Tampilkan 50 Lagi ({features.length - visibleLimit} tersisa)
                   </button>
                 </li>
-              );
-            })
+              )}
+            </>
           )}
         </ul>
       )}

@@ -1,21 +1,18 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { MockBadge } from "@/components/MockBadge";
 import { StatusCard } from "@/components/StatusCard";
-import { HotspotMap, type HotspotMapHandle } from "@/components/HotspotMap";
+import type { HotspotMapHandle } from "@/components/HotspotMap";
 import { HotspotList } from "@/components/HotspotList";
 import { FilterPanel, type FilterState } from "@/components/FilterPanel";
 import { Legend, type LayerState } from "@/components/Legend";
 import { RiskBadge } from "@/components/RiskBadge";
 import { HotspotSummary } from "@/components/HotspotSummary";
 import { HotspotDisclaimer } from "@/components/HotspotDisclaimer";
-import { AirQualityPanel } from "@/components/AirQualityPanel";
-import { WeatherPanel } from "@/components/WeatherPanel";
-import { RiskDetailPanel } from "@/components/RiskDetailPanel";
-import { LocationPanel } from "@/components/LocationPanel";
 import {
   getStatus,
   getHotspots,
@@ -31,6 +28,87 @@ import type {
   RiskCurrentResponse,
   AdminAreasResponse,
 } from "@/lib/types";
+
+// Dynamic Code Splitting for Heavy Modules
+const HotspotMap = dynamic(
+  () => import("@/components/HotspotMap").then((m) => m.HotspotMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="w-full h-[400px] sm:h-[500px] lg:h-[600px] rounded-xl border border-rw-smoke-200 bg-rw-smoke-100 flex items-center justify-center text-xs text-rw-smoke-500 animate-pulse"
+        style={{ minHeight: "400px" }}
+      >
+        <div className="flex items-center gap-2">
+          <svg className="h-5 w-5 animate-spin text-rw-sienna-600" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span>Memuat peta WebGIS interaktif...</span>
+        </div>
+      </div>
+    ),
+  }
+);
+
+const AirQualityPanel = dynamic(
+  () => import("@/components/AirQualityPanel").then((m) => m.AirQualityPanel),
+  {
+    loading: () => (
+      <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm animate-pulse space-y-3 min-h-[300px]">
+        <div className="h-5 bg-rw-smoke-100 rounded w-1/3" />
+        <div className="h-4 bg-rw-smoke-100 rounded w-2/3" />
+        <div className="h-32 bg-rw-smoke-50 rounded" />
+      </div>
+    ),
+  }
+);
+
+const WeatherPanel = dynamic(
+  () => import("@/components/WeatherPanel").then((m) => m.WeatherPanel),
+  {
+    loading: () => (
+      <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm animate-pulse space-y-3 min-h-[300px]">
+        <div className="h-5 bg-rw-smoke-100 rounded w-1/3" />
+        <div className="h-4 bg-rw-smoke-100 rounded w-2/3" />
+        <div className="grid grid-cols-2 gap-2">
+          <div className="h-16 bg-rw-smoke-100 rounded" />
+          <div className="h-16 bg-rw-smoke-100 rounded" />
+        </div>
+      </div>
+    ),
+  }
+);
+
+const RiskDetailPanel = dynamic(
+  () => import("@/components/RiskDetailPanel").then((m) => m.RiskDetailPanel),
+  {
+    loading: () => (
+      <div className="space-y-3 min-h-[300px]">
+        {[1, 2].map((i) => (
+          <div key={i} className="animate-pulse rounded-xl border border-rw-smoke-200 bg-white p-5">
+            <div className="h-5 bg-rw-smoke-100 rounded w-1/3 mb-3" />
+            <div className="h-4 bg-rw-smoke-100 rounded w-2/3 mb-2" />
+            <div className="h-3 bg-rw-smoke-100 rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+    ),
+  }
+);
+
+const LocationPanel = dynamic(
+  () => import("@/components/LocationPanel").then((m) => m.LocationPanel),
+  {
+    loading: () => (
+      <div className="rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm animate-pulse space-y-3 min-h-[300px]">
+        <div className="h-5 bg-rw-smoke-100 rounded w-1/3" />
+        <div className="h-4 bg-rw-smoke-100 rounded w-2/3" />
+        <div className="h-20 bg-rw-smoke-50 rounded" />
+      </div>
+    ),
+  }
+);
 
 type HotspotFeature = HotspotsResponse["features"][0];
 
@@ -346,14 +424,14 @@ export default function HomePage() {
             tabIndex={0}
           >
             {/* Risk overview */}
-            {risk && risk.assessments.length > 0 && (
-              <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4">
-                <h2 className="text-lg font-semibold text-rw-gray-900 mb-3 flex items-center gap-2">
-                  <svg className="h-5 w-5 text-rw-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  </svg>
-                  Ringkasan Risiko per Kabupaten
-                </h2>
+            <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4 min-h-[160px]">
+              <h2 className="text-lg font-semibold text-rw-smoke-900 mb-3 flex items-center gap-2">
+                <svg className="h-5 w-5 text-rw-smoke-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                <span>Ringkasan Risiko per Kabupaten</span>
+              </h2>
+              {risk && risk.assessments.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {[...risk.assessments]
                     .sort((a, b) => {
@@ -370,13 +448,31 @@ export default function HomePage() {
                       <RiskBadge key={a.area_id} assessment={a} compact />
                     ))}
                 </div>
-                {risk.note && (
-                  <p className="mt-2 text-xs text-rw-gray-600 italic">
-                    Catatan: {risk.note}
-                  </p>
-                )}
-              </section>
-            )}
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 animate-pulse">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div
+                      key={i}
+                      className="rounded-xl border border-rw-smoke-200 bg-white p-3.5 min-h-[108px] shadow-2xs flex flex-col justify-between"
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="h-4 bg-rw-smoke-100 rounded w-28" />
+                        <div className="h-3 w-3 bg-rw-smoke-100 rounded-full" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="h-10 bg-rw-smoke-50 rounded border border-rw-smoke-100" />
+                        <div className="h-10 bg-rw-smoke-50 rounded border border-rw-smoke-100" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {risk?.note && (
+                <p className="mt-2 text-xs text-rw-smoke-600 italic">
+                  Catatan: {risk.note}
+                </p>
+              )}
+            </section>
 
             {/* Map + sidebar */}
             <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-6">

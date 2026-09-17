@@ -81,27 +81,36 @@ export function StatusCard({ title, description, status, icon }: StatusCardProps
 
   return (
     <div
-      className={`rw-instrument-panel rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow`}
-      style={{ borderLeftColor: health.borderColor === "border-rw-smoke-400" ? "var(--rw-smoke-400)" : health.borderColor === "border-rw-orange-600" ? "var(--rw-orange-600)" : "var(--rw-mangrove-600)" }}
+      className="rw-instrument-panel rounded-xl border border-rw-smoke-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow min-h-[142px] flex flex-col justify-between"
+      style={{
+        borderLeftColor:
+          health.borderColor === "border-rw-smoke-400"
+            ? "var(--rw-smoke-400)"
+            : health.borderColor === "border-rw-orange-600"
+              ? "var(--rw-orange-600)"
+              : "var(--rw-mangrove-600)",
+      }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rw-sienna-50 text-rw-sienna-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rw-sienna-50 text-rw-sienna-600 flex-shrink-0">
             {icon}
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-rw-smoke-900">{title}</h3>
-            <p className="text-xs text-rw-smoke-600 mt-0.5">{description}</p>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-rw-smoke-900 truncate">{title}</h3>
+            <p className="text-xs text-rw-smoke-600 mt-0.5 line-clamp-1">{description}</p>
           </div>
         </div>
 
-        <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${health.bgColor} ${health.color}`}>
+        <div
+          className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium flex-shrink-0 ${health.bgColor} ${health.color}`}
+        >
           {health.icon}
-          {health.label}
+          <span>{health.label}</span>
         </div>
       </div>
 
-      {status && (
+      {status ? (
         <div className="mt-4 grid grid-cols-2 gap-3 border-t border-rw-smoke-100 pt-3">
           <div>
             <span className="text-xs text-rw-smoke-500 block">Observasi terakhir</span>
@@ -114,6 +123,17 @@ export function StatusCard({ title, description, status, icon }: StatusCardProps
             <span className="rw-readout text-sm font-medium text-rw-smoke-800">
               {formatAge(status.last_successful_run_at)}
             </span>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-rw-smoke-100 pt-3 animate-pulse">
+          <div>
+            <span className="text-xs text-rw-smoke-400 block">Observasi terakhir</span>
+            <div className="h-4 bg-rw-smoke-100 rounded w-20 mt-1" />
+          </div>
+          <div>
+            <span className="text-xs text-rw-smoke-400 block">Update terakhir</span>
+            <div className="h-4 bg-rw-smoke-100 rounded w-20 mt-1" />
           </div>
         </div>
       )}
