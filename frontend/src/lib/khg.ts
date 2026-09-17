@@ -207,23 +207,30 @@ function pointInPolygon(point: [number, number], polygon: number[][]): boolean {
   return inside;
 }
 
+// Pre-computed bounding boxes for fast spatial indexing
+const KHG_BBOXES = KHG_RIAU_GEOJSON.features.map((f) => {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const poly = f.geometry.coordinates[0] as number[][];
+  for (const [x, y] of poly) {
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+  return { minX, minY, maxX, maxY, feature: f };
+});
+
 /**
  * Check if a given [lat, lon] coordinate is inside Riau's Peatland Hydrological Unit (KHG).
  */
 export function isCoordinateInPeatland(lat: number, lon: number): { inPeatland: boolean; khgName?: string } {
-  for (const feature of KHG_RIAU_GEOJSON.features) {
-    if (feature.geometry.type === "Polygon") {
-      const coords = feature.geometry.coordinates as number[][][];
-      if (coords.length > 0 && pointInPolygon([lon, lat], coords[0])) {
-        return { inPeatland: true, khgName: feature.properties.nama_khg };
-      }
-    } else if (feature.geometry.type === "MultiPolygon") {
-      const polys = feature.geometry.coordinates as number[][][][];
-      for (const poly of polys) {
-        if (poly.length > 0 && pointInPolygon([lon, lat], poly[0])) {
-          return { inPeatland: true, khgName: feature.properties.nama_khg };
-        }
-      }
+  for (const b of KHG_BBOXES) {
+    if (lon < b.minX || lon > b.maxX || lat < b.minY || lat > b.maxY) {
+      continue;
+    }
+    const coords = b.feature.geometry.coordinates as number[][][];
+    if (coords.length > 0 && pointInPolygon([lon, lat], coords[0])) {
+      return { inPeatland: true, khgName: b.feature.properties.nama_khg };
     }
   }
   return { inPeatland: false };

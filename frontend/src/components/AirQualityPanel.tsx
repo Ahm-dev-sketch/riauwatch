@@ -854,6 +854,7 @@ export function AirQualityPanel() {
           <div className="relative w-full sm:w-64">
             <input
               type="text"
+              aria-label="Cari stasiun pemantau kualitas udara"
               placeholder="Cari stasiun (Pekanbaru, Dumai, dll)..."
               value={stationSearch}
               onChange={(e) => setStationSearch(e.target.value)}

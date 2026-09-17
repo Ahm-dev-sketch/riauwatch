@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  compress: true,
+  experimental: {
+    optimizePackageImports: ["date-fns"],
+  },
 };
 
 export default nextConfig;

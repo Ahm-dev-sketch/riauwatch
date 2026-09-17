@@ -152,11 +152,27 @@ export function fuseAndDeduplicateHotspots(
     };
   });
 
-  // 2. Algoritma Spatio-Temporal Clustering (<= 1.0 km & <= 3 hours)
+  // 2. Fast Spatial-Grid Spatio-Temporal Clustering (<= 1.0 km & <= 3 hours)
   const visited = new Set<number>();
   const clusters: UnifiedHotspot[] = [];
   const MAX_DISTANCE_KM = 1.0;
   const MAX_TIME_DIFF_MS = 3 * 3600 * 1000; // 3 jam
+  const GRID_SIZE = 0.01; // ~1.1 km cell size for O(N) spatial lookup
+
+  // Build Spatial Grid Index
+  const grid = new Map<string, number[]>();
+  for (let i = 0; i < unifiedList.length; i++) {
+    const item = unifiedList[i];
+    const gx = Math.floor(item.lat / GRID_SIZE);
+    const gy = Math.floor(item.lon / GRID_SIZE);
+    const key = `${gx}_${gy}`;
+    const list = grid.get(key);
+    if (list) {
+      list.push(i);
+    } else {
+      grid.set(key, [i]);
+    }
+  }
 
   for (let i = 0; i < unifiedList.length; i++) {
     if (visited.has(i)) continue;
@@ -166,18 +182,30 @@ export function fuseAndDeduplicateHotspots(
     const group = [base];
     const baseTime = new Date(base.acqDatetime).getTime();
 
-    for (let j = i + 1; j < unifiedList.length; j++) {
-      if (visited.has(j)) continue;
-      const candidate = unifiedList[j];
-      const candTime = new Date(candidate.acqDatetime).getTime();
+    const gx = Math.floor(base.lat / GRID_SIZE);
+    const gy = Math.floor(base.lon / GRID_SIZE);
 
-      // Periksa selisih waktu
-      if (Math.abs(baseTime - candTime) <= MAX_TIME_DIFF_MS) {
-        // Periksa jarak spasial
-        const dist = haversineDistanceKm(base.lat, base.lon, candidate.lat, candidate.lon);
-        if (dist <= MAX_DISTANCE_KM) {
-          visited.add(j);
-          group.push(candidate);
+    // Check only adjacent 9 cells
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const neighborKey = `${gx + dx}_${gy + dy}`;
+        const neighborIndices = grid.get(neighborKey);
+        if (!neighborIndices) continue;
+
+        for (const j of neighborIndices) {
+          if (visited.has(j)) continue;
+          const candidate = unifiedList[j];
+          const candTime = new Date(candidate.acqDatetime).getTime();
+
+          // Check time difference
+          if (Math.abs(baseTime - candTime) <= MAX_TIME_DIFF_MS) {
+            // Check spatial distance
+            const dist = haversineDistanceKm(base.lat, base.lon, candidate.lat, candidate.lon);
+            if (dist <= MAX_DISTANCE_KM) {
+              visited.add(j);
+              group.push(candidate);
+            }
+          }
         }
       }
     }

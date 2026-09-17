@@ -31,6 +31,7 @@ export function Legend({ visibleLayers, onToggle }: LegendProps) {
           <label className="flex items-center gap-2.5 cursor-pointer group select-none">
             <input
               type="checkbox"
+              aria-label="Tampilkan Lapisan Titik Panas Satelit"
               checked={visibleLayers.hotspots}
               onChange={() => onToggle("hotspots")}
               className="h-4 w-4 rounded border-rw-smoke-300 text-rw-sienna-600 focus-visible:ring-2 focus-visible:ring-rw-sienna-600 focus-visible:ring-offset-1"
@@ -50,6 +51,7 @@ export function Legend({ visibleLayers, onToggle }: LegendProps) {
           <label className="flex items-center gap-2.5 cursor-pointer group select-none">
             <input
               type="checkbox"
+              aria-label="Tampilkan Lapisan Batas 12 Kabupaten dan Kota"
               checked={visibleLayers.boundaries}
               onChange={() => onToggle("boundaries")}
               className="h-4 w-4 rounded border-rw-smoke-300 text-rw-sienna-600 focus-visible:ring-2 focus-visible:ring-rw-sienna-600 focus-visible:ring-offset-1"
@@ -70,6 +72,7 @@ export function Legend({ visibleLayers, onToggle }: LegendProps) {
           <label className="flex items-center gap-2.5 cursor-pointer group select-none">
             <input
               type="checkbox"
+              aria-label="Tampilkan Lapisan Kawasan Hidrologis Gambut"
               checked={visibleLayers.khg}
               onChange={() => onToggle("khg")}
               className="h-4 w-4 rounded border-rw-smoke-300 text-rw-sienna-600 focus-visible:ring-2 focus-visible:ring-rw-sienna-600 focus-visible:ring-offset-1"
@@ -90,6 +93,7 @@ export function Legend({ visibleLayers, onToggle }: LegendProps) {
           <label className="flex items-center gap-2.5 cursor-pointer group select-none">
             <input
               type="checkbox"
+              aria-label="Tampilkan Lapisan Vektor Arah Angin Permukaan"
               checked={visibleLayers.wind}
               onChange={() => onToggle("wind")}
               className="h-4 w-4 rounded border-rw-smoke-300 text-rw-sienna-600 focus-visible:ring-2 focus-visible:ring-rw-sienna-600 focus-visible:ring-offset-1"

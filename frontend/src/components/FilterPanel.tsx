@@ -230,6 +230,7 @@ export function FilterPanel({ filters, onChange, adminAreas }: FilterPanelProps)
                     <input
                       ref={searchInputRef}
                       type="text"
+                      aria-label="Cari Kabupaten atau Kota"
                       placeholder="Cari (Pekanbaru, Dumai, dll)..."
                       value={kabupatenSearch}
                       onChange={(e) => setKabupatenSearch(e.target.value)}

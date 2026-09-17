@@ -98,6 +98,30 @@ export const metadata: Metadata = {
   },
 };
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      "url": SITE_URL,
+      "name": "RIAUWATCH",
+      "description": "Platform Pemantauan Karhutla, Cuaca & Kualitas Udara Provinsi Riau",
+      "inLanguage": "id-ID",
+    },
+    {
+      "@type": "WebApplication",
+      "@id": `${SITE_URL}/#webapp`,
+      "name": "RIAUWATCH",
+      "url": SITE_URL,
+      "applicationCategory": "EnvironmentalApplication",
+      "operatingSystem": "All",
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "description": "Pemantauan titik panas satelit NASA FIRMS, indeks ISPU PM2.5, dan risiko kebakaran hutan lahan Provinsi Riau.",
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -112,6 +136,10 @@ export default function RootLayout({
         <meta name="theme-color" content="#2c1e18" />
         <meta name="google-site-verification" content="Kzt0lxdU6kdJOTxJuQpeD6AA33-X9a0-8qRbUBEPY38" />
         <link rel="manifest" href="/manifest.json" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </head>
       <body className="min-h-full flex flex-col bg-rw-smoke-50 text-rw-smoke-900 font-sans antialiased">
         <a href="#main-content" className="skip-link">

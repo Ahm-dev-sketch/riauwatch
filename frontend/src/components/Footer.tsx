@@ -39,8 +39,8 @@ export function Footer() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="text-sm text-rw-smoke-500">
-            <span className="font-semibold text-rw-smoke-300 font-display">RIAUWATCH</span>
+          <div className="text-sm text-rw-smoke-300">
+            <span className="font-semibold text-rw-white font-display">RIAUWATCH</span>
             {" · "}
             Pemantauan lingkungan independen Provinsi Riau
           </div>
@@ -51,12 +51,12 @@ export function Footer() {
             >
               Sumber Data
             </Link>
-            <span className="text-rw-smoke-700">|</span>
+            <span className="text-rw-smoke-500">|</span>
             <a
               href="https://www.openstreetmap.org/copyright"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-rw-smoke-500 hover:text-rw-smoke-300 underline underline-offset-2"
+              className="text-rw-smoke-300 hover:text-rw-white underline underline-offset-2"
             >
               Data Peta &copy; OpenStreetMap
             </a>
