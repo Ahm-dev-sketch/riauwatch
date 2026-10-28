@@ -264,3 +264,24 @@ body {
     animation: none;
   }
 }
+
+/* Hero — subtle entry reveal. Transform + opacity only; eased out fade/rise.
+   Final state is applied under prefers-reduced-motion via the block below. */
+.rw-hero-reveal {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 400ms ease-out, transform 400ms ease-out;
+}
+
+.rw-hero-reveal.is-inview {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rw-hero-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

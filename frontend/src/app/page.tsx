@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { MockBadge } from "@/components/MockBadge";
+import { Hero } from "@/components/Hero";
 import { StatusCard } from "@/components/StatusCard";
 import type { HotspotMapHandle } from "@/components/HotspotMap";
 import { HotspotList } from "@/components/HotspotList";
@@ -278,34 +278,7 @@ export default function HomePage() {
 
       <main id="main-content" className="flex-1">
         {/* Hero: Answer "Bagaimana kondisi Riau sekarang?" */}
-        <section className="bg-white border-b border-rw-smoke-200">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-rw-peat-900 tracking-tight font-display">
-                    Bagaimana kondisi Riau sekarang?
-                  </h1>
-                  <MockBadge />
-                </div>
-                {generatedAt && (
-                  <p className="text-sm text-rw-smoke-600">
-                    Data diperbarui:{" "}
-                    <time dateTime={generatedAt} className="rw-readout font-medium text-rw-smoke-800">
-                      {new Date(generatedAt).toLocaleString("id-ID", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </time>
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
+        <Hero status={status} summary={summary} generatedAt={generatedAt} />
 
         {/* Jerebu Strip — atmospheric band reflecting current air quality */}
         <section
